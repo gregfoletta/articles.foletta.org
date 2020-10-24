@@ -1,0 +1,84 @@
+---
+title: Ergo Bike Wind Resistance
+author: Greg Foletta
+date: '2020-10-24'
+slug: []
+categories: []
+tags: []
+images: []
+---
+
+```{r include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(xml2)
+library(here)
+```
+```{r}
+# Read in the XML files
+tcx <-
+    tibble(
+        files = list.files(
+            path = here('static', 'post', 'ergo_bike'),
+            pattern = '*.tcx',
+            full.names = TRUE
+        )
+    ) %>% 
+    transmute(xml = map(files, ~read_xml(.x))) %>% 
+    rownames_to_column(var = '.id')
+print(tcx)
+```
+```{r}
+pull_tcx_data <- function(tcx) {
+    # Strip out the namespace
+    trackpoints <- 
+        tcx %>% 
+        xml_ns_strip() %>% 
+        xml_find_all('.//Trackpoint')
+        time <-
+        trackpoints %>% 
+        xml_find_all('./Time') %>% 
+        xml_text() %>% 
+        ymd_hms()
+       # There's one extra at the start we need to remove 
+    time <- time[-1]
+       # Pull out the cadence at each trackpoint 
+    cadence <-
+        trackpoints %>%
+        xml_find_all('./Cadence') %>% 
+        xml_text() %>% 
+        as.integer()
+        # Pull out the power at each trackpoint
+    power <-
+        trackpoints %>% 
+        xml_find_all('./Extensions/TPX/Watts') %>% 
+        xml_text() %>% 
+        as.integer()
+        # Create the data frame 
+    tibble(
+        datetime = time,
+        cadence = cadence,
+        power = power
+    )
+}
+```
+```{r}
+ergo_data <-
+    tcx %>% 
+    mutate(tcx = map(xml, ~pull_tcx_data(.x))) %>% 
+    unnest(cols = 'tcx') %>% 
+    select(-xml)
+print(ergo_data)
+```
+```{r}
+ergo_data <-
+    ergo_data %>% 
+    group_by(.id) %>% 
+    mutate(second = datetime - first(datetime))
+```
+```{r}
+ergo_data %>% 
+    ggplot() +
+    geom_point(aes(cadence, power), alpha = .1)
+```
+
