@@ -8,6 +8,53 @@ tags: []
 images: []
 ---
 
+# Reading in the Data
+
+
+```r
+library(tidyverse)
+```
+
+```
+## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.0 ──
+```
+
+```
+## ✓ ggplot2 3.3.2     ✓ purrr   0.3.4
+## ✓ tibble  3.0.4     ✓ dplyr   1.0.2
+## ✓ tidyr   1.1.2     ✓ stringr 1.4.0
+## ✓ readr   1.4.0     ✓ forcats 0.5.0
+```
+
+```
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+```
+
+```r
+library(lubridate)
+```
+
+```
+## 
+## Attaching package: 'lubridate'
+```
+
+```
+## The following objects are masked from 'package:base':
+## 
+##     date, intersect, setdiff, union
+```
+
+```r
+library(xml2)
+library(here)
+```
+
+```
+## here() starts at /home/puglet/Documents/Projects/articles.foletta.org
+```
 
 
 ```r
@@ -51,6 +98,7 @@ print(tcx)
 ## 19 <xml_dcmn>    19
 ## 20 <xml_dcmn>    20
 ```
+
 
 ```r
 pull_tcx_data <- function(tcx) {
@@ -120,6 +168,7 @@ print(ergo_data)
 ## # … with 46,328 more rows
 ```
 
+
 ```r
 ergo_data <-
     ergo_data %>% 
@@ -141,12 +190,14 @@ ergo_data %>%
 <img src="index_files/figure-html/unnamed-chunk-5-1.png" width="672" />
 
 
-# Theory
+# Some Theory First
 
 Drag equation:
 
 $$ F = \frac{1}{2} \rho v^2 C_D A $$
-# Training the Model
+We're going bundle up the coefficients into a single value `\(\alpha = \frac{1}{2} \rho C_D A\)`
+
+# Initial Look and a Small Mistake
 
 
 ```r
@@ -184,18 +235,226 @@ ergo_split <-
 # Viewing the data
 training(ergo_split) %>% 
     ggplot() +
-    geom_jitter(aes(cadence, power), alpha = .3, size = .4)
+    geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
+    geom_smooth(aes(cadence, power), formula = y ~ I(x^2)) +
+    labs(
+        x = 'Cadence',
+        y = 'Power',
+        title = 'Ergo - Cadence versus Power Output'
+    )
+```
+
+```
+## `geom_smooth()` using method = 'gam'
+```
+
+```
+## Warning in attr(pterms[tind[j]], "term.label"): partial match of 'term.label' to
+## 'term.labels'
 ```
 
 <img src="index_files/figure-html/unnamed-chunk-6-1.png" width="672" />
 
+# Tidying the Data
+
+
+
 ```r
+ergo_data <-
+    ergo_data %>% 
+    group_by(.id) %>%
+    mutate(
+        cadence_prime = cadence - lag(cadence),
+        power_prime = power - lag(power)
+    ) %>% 
+    ungroup()
+
+ergo_data %>% 
+    filter(cadence_prime %in% c(-3:3)) %>% 
+    ggplot() +
+    geom_histogram(aes(power_prime), binwidth = 1)
+```
+
+<img src="index_files/figure-html/unnamed-chunk-7-1.png" width="672" />
+
+```r
+ergo_data %>% 
+    filter(cadence_prime %in% c(-3:3)) %>% 
+    ggplot() +
+    geom_histogram(aes(power_prime), binwidth = 1) +
+    geom_vline(aes(xintercept = 0), colour = 'blue') +
+    facet_grid(rows = vars(cadence_prime), scales = 'free_y') +
+    labs(
+        title = 'Count of Changes in Power',
+        subtitle = 'Grouped by Changes in Cadence',
+        x = 'Change in Power',
+        y = 'Count'
+    )
+```
+
+<img src="index_files/figure-html/unnamed-chunk-7-2.png" width="672" />
+
+
+```r
+ergo_filtered <-
+    ergo_data %>% 
+    filter(
+        cadence_prime > -1,
+        cadence_prime < 1
+    ) %>% 
+    mutate(
+        power_prime_scaled = scale(power_prime),
+        outside_alpha = ifelse(
+            power_prime_scaled < -1.96 | power_prime_scaled > 1.96, 
+            TRUE, 
+            FALSE
+        )
+    ) %>%
+    filter(!outside_alpha) 
+
+ergo_filtered %>% 
+    ggplot() +
+    geom_histogram(aes(power_prime), binwidth = 1)
+```
+
+<img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" />
+
+
+```r
+ergo_filtered %>% 
+    ggplot() +
+    geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
+    geom_smooth(aes(cadence, power, colour = 'cadence^2'), formula = y ~ I(x^2)) +
+    geom_smooth(aes(cadence, power, colour = 'cadence^3'), formula = y ~ I(x^3)) +
+    labs(
+        x = 'Cadence',
+        y = 'Power',
+        title = 'Ergo - Cadence versus Power Output'
+    )
+```
+
+```
+## `geom_smooth()` using method = 'gam'
+```
+
+```
+## Warning in attr(pterms[tind[j]], "term.label"): partial match of 'term.label' to
+## 'term.labels'
+```
+
+```
+## `geom_smooth()` using method = 'gam'
+```
+
+```
+## Warning in attr(pterms[tind[j]], "term.label"): partial match of 'term.label' to
+## 'term.labels'
+```
+
+<img src="index_files/figure-html/unnamed-chunk-9-1.png" width="672" />
+# Theory Revisited
+
+# Modelling
+
+
+```r
+#####################
+# Need to update this with the filtered data, not just the original data
+# This line is a repeat of the one up top.
+###################
+###################
+ergo_split <- initial_split(ergo_filtered)
+
+# Model the data
 ergo_model <-
     linear_reg() %>% 
     set_engine('lm') %>% 
-    fit(cadence ~ I(power^2), data = training(ergo_split))
+    fit(power ~ I(cadence^3), data = training(ergo_split))
+
+glance(ergo_model)
+```
+
+```
+## # A tibble: 1 x 12
+##   r.squared adj.r.squared sigma statistic p.value    df  logLik    AIC    BIC
+##       <dbl>         <dbl> <dbl>     <dbl>   <dbl> <dbl>   <dbl>  <dbl>  <dbl>
+## 1     0.992         0.992  7.43  2263322.       0     1 -63674. 1.27e5 1.27e5
+## # … with 3 more variables: deviance <dbl>, df.residual <int>, nobs <int>
 ```
 
 
 
-# Validating the Model
+
+```r
+ergo_model %>% 
+    pluck('fit') %>% 
+    augment() %>% 
+    ggplot() +
+    geom_point(aes(.fitted, .std.resid), size = .1)
+```
+
+<img src="index_files/figure-html/unnamed-chunk-11-1.png" width="672" />
+
+
+```r
+ergo_model %>% 
+    predict(testing(ergo_split)) %>% 
+    bind_cols(testing(ergo_split)) %>%
+    metrics(power, .pred)
+```
+
+```
+## # A tibble: 3 x 3
+##   .metric .estimator .estimate
+##   <chr>   <chr>          <dbl>
+## 1 rmse    standard       7.77 
+## 2 rsq     standard       0.991
+## 3 mae     standard       5.70
+```
+
+```r
+predict_data <- 
+    tibble(cadence = 0:max(ergo_data$cadence)) %>% 
+    mutate(power = predict(ergo_model, new_data = .) %>% pull(.pred))
+
+ergo_data %>% 
+    ggplot() +
+    geom_jitter(aes(cadence, power), size = .1) +
+    geom_line(aes(cadence, power), colour = 'orange', data = predict_data)
+```
+
+<img src="index_files/figure-html/unnamed-chunk-13-1.png" width="672" />
+
+
+
+# Inference
+
+
+```r
+tidy(ergo_model)
+```
+
+```
+## # A tibble: 2 x 5
+##   term          estimate   std.error statistic  p.value
+##   <chr>            <dbl>       <dbl>     <dbl>    <dbl>
+## 1 (Intercept)  -2.33     0.148           -15.7 5.11e-55
+## 2 I(cadence^3)  0.000629 0.000000418    1504.  0.
+```
+
+So if our formula is `\(P = \alpha v^3\)`, then `\(\alpha = 0.000616\)`, and thus:
+
+$$
+P = \alpha v^3 \\
+\alpha =  \frac{1}{2} \rho C_D A \\
+\frac{1}{2} \rho C_D A = 0.000616 \\
+C_D = \frac{2 \times 0.000616}{\rho A} \\
+C_D = \frac{0.001232}{\rho A}
+$$
+
+My house sits on around 20°C, and looking up the density of air at sea level is approximately `\(1.2041 \text{ kg/m^3}\)`. Cross section area
+
+$$
+C_D = \frac{0.001232}{1.2041 \times .5} \\
+C_D = 
+$$

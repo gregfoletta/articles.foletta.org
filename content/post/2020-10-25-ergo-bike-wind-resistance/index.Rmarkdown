@@ -163,30 +163,15 @@ ergo_data %>%
         x = 'Change in Power',
         y = 'Count'
     )
-
-ergo_data %>% 
-    filter(
-        cadence_prime %in% c(-3:3),
-        power_prime < -50
-    ) %>% 
-    ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1) +
-    geom_vline(aes(xintercept = 0), colour = 'blue') +
-    facet_grid(rows = vars(cadence_prime), scales = 'free_y') +
-    labs(
-        title = 'Count of Changes in Power',
-        subtitle = 'Grouped by Changes in Cadence',
-        x = 'Change in Power',
-        y = 'Count'
-    )
 ```
 
 ```{r}
 ergo_filtered <-
-    ergo_data %>%
+    ergo_data %>% 
     filter(
         cadence_prime > -1,
-        cadence_prime < 1) %>% 
+        cadence_prime < 1
+    ) %>% 
     mutate(
         power_prime_scaled = scale(power_prime),
         outside_alpha = ifelse(
@@ -240,7 +225,7 @@ glance(ergo_model)
 ```{r}
 ergo_model %>% 
     pluck('fit') %>% 
-    augment() >% 
+    augment() %>% 
     ggplot() +
     geom_point(aes(.fitted, .std.resid), size = .1)
 ```
