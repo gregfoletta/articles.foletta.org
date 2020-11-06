@@ -30,6 +30,7 @@ The portal allows you to download the session data as a *TCX* file, which is Gar
 
 ```{r message = FALSE}
 library(tidyverse)
+library(tidymodels)
 library(lubridate)
 library(xml2)
 library(here)
@@ -172,15 +173,12 @@ F = \alpha v^2
 $$
 So we'll perform a regression of the square of our cadence variable on to power, and the coefficient will be our $\alpha$$. Great!
 
-Some of you have probably seen the mistake I've made here. I'm leaving it in because I think
+Some of you have probably seen the mistake I've made here. It's akin to not reading the questions as closely as you should on an exam. I'm leaving it in because it's instructional, and this particular mistake lead me in a direction that made the end result better.
 
-a. It's instructional, show
+After noting the drag equation it was time to take our first look at the data. I split the data into a training and test set and mapped out the cadence versus power of the training set. I thought I may as well add a quadratic regression over the top as well.
 
-
-# Initial Look and a Small Mistake
 
 ```{r}
-library(tidymodels)
 
 # Split the data
 ergo_split <-
@@ -191,13 +189,16 @@ ergo_split <-
 training(ergo_split) %>% 
     ggplot() +
     geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
-    geom_smooth(aes(cadence, power), formula = y ~ I(x^2)) +
+    geom_smooth(aes(cadence, power), method = 'lm', formula = y ~ I(x^2)) +
     labs(
+        title = 'Ergo - Cadence versus Power Output',
+        subtitle = 'with a quadratic overlay',
         x = 'Cadence',
-        y = 'Power',
-        title = 'Ergo - Cadence versus Power Output'
+        y = 'Power'
     )
 ```
+
+OK... that' not I was expecting 
 
 # Tidying the Data
 

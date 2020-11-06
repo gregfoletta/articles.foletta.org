@@ -31,6 +31,7 @@ The portal allows you to download the session data as a *TCX* file, which is Gar
 
 ```r
 library(tidyverse)
+library(tidymodels)
 library(lubridate)
 library(xml2)
 library(here)
@@ -154,7 +155,7 @@ ergo_data %>%
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#ldbifljrhe .gt_table {
+#xnrxfeaprb .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -179,7 +180,7 @@ ergo_data %>%
   border-left-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_heading {
+#xnrxfeaprb .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -191,7 +192,7 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_title {
+#xnrxfeaprb .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -201,7 +202,7 @@ ergo_data %>%
   border-bottom-width: 0;
 }
 
-#ldbifljrhe .gt_subtitle {
+#xnrxfeaprb .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -211,13 +212,13 @@ ergo_data %>%
   border-top-width: 0;
 }
 
-#ldbifljrhe .gt_bottom_border {
+#xnrxfeaprb .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_col_headings {
+#xnrxfeaprb .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -232,7 +233,7 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_col_heading {
+#xnrxfeaprb .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -252,7 +253,7 @@ ergo_data %>%
   overflow-x: hidden;
 }
 
-#ldbifljrhe .gt_column_spanner_outer {
+#xnrxfeaprb .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -264,15 +265,15 @@ ergo_data %>%
   padding-right: 4px;
 }
 
-#ldbifljrhe .gt_column_spanner_outer:first-child {
+#xnrxfeaprb .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ldbifljrhe .gt_column_spanner_outer:last-child {
+#xnrxfeaprb .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ldbifljrhe .gt_column_spanner {
+#xnrxfeaprb .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -284,7 +285,7 @@ ergo_data %>%
   width: 100%;
 }
 
-#ldbifljrhe .gt_group_heading {
+#xnrxfeaprb .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -306,7 +307,7 @@ ergo_data %>%
   vertical-align: middle;
 }
 
-#ldbifljrhe .gt_empty_group_heading {
+#xnrxfeaprb .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -321,15 +322,15 @@ ergo_data %>%
   vertical-align: middle;
 }
 
-#ldbifljrhe .gt_from_md > :first-child {
+#xnrxfeaprb .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ldbifljrhe .gt_from_md > :last-child {
+#xnrxfeaprb .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ldbifljrhe .gt_row {
+#xnrxfeaprb .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -348,7 +349,7 @@ ergo_data %>%
   overflow-x: hidden;
 }
 
-#ldbifljrhe .gt_stub {
+#xnrxfeaprb .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -360,7 +361,7 @@ ergo_data %>%
   padding-left: 12px;
 }
 
-#ldbifljrhe .gt_summary_row {
+#xnrxfeaprb .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -370,7 +371,7 @@ ergo_data %>%
   padding-right: 5px;
 }
 
-#ldbifljrhe .gt_first_summary_row {
+#xnrxfeaprb .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -380,7 +381,7 @@ ergo_data %>%
   border-top-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_grand_summary_row {
+#xnrxfeaprb .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -390,7 +391,7 @@ ergo_data %>%
   padding-right: 5px;
 }
 
-#ldbifljrhe .gt_first_grand_summary_row {
+#xnrxfeaprb .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -400,11 +401,11 @@ ergo_data %>%
   border-top-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_striped {
+#xnrxfeaprb .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ldbifljrhe .gt_table_body {
+#xnrxfeaprb .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -413,7 +414,7 @@ ergo_data %>%
   border-bottom-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_footnotes {
+#xnrxfeaprb .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -427,13 +428,13 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_footnote {
+#xnrxfeaprb .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#ldbifljrhe .gt_sourcenotes {
+#xnrxfeaprb .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -447,46 +448,46 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ldbifljrhe .gt_sourcenote {
+#xnrxfeaprb .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#ldbifljrhe .gt_left {
+#xnrxfeaprb .gt_left {
   text-align: left;
 }
 
-#ldbifljrhe .gt_center {
+#xnrxfeaprb .gt_center {
   text-align: center;
 }
 
-#ldbifljrhe .gt_right {
+#xnrxfeaprb .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ldbifljrhe .gt_font_normal {
+#xnrxfeaprb .gt_font_normal {
   font-weight: normal;
 }
 
-#ldbifljrhe .gt_font_bold {
+#xnrxfeaprb .gt_font_bold {
   font-weight: bold;
 }
 
-#ldbifljrhe .gt_font_italic {
+#xnrxfeaprb .gt_font_italic {
   font-style: italic;
 }
 
-#ldbifljrhe .gt_super {
+#xnrxfeaprb .gt_super {
   font-size: 65%;
 }
 
-#ldbifljrhe .gt_footnote_marks {
+#xnrxfeaprb .gt_footnote_marks {
   font-style: italic;
   font-size: 65%;
 }
 </style>
-<div id="ldbifljrhe" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<div id="xnrxfeaprb" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
   
   <thead class="gt_col_headings">
     <tr>
@@ -586,39 +587,11 @@ F = \alpha v^2
 $$
 So we'll perform a regression of the square of our cadence variable on to power, and the coefficient will be our $\alpha$$. Great!
 
-Some of you have probably seen the mistake I've made here. I'm leaving it in because I think
+Some of you have probably seen the mistake I've made here. It's akin to not reading the questions as closely as you should on an exam. I'm leaving it in because it's instructional, and this particular mistake lead me in a direction that made the end result better.
 
-a. It's instructional, show
-
-
-# Initial Look and a Small Mistake
+After noting the drag equation it was time to take our first look at the data. I split the data into a training and test set and mapped out the cadence versus power of the training set. I thought I may as well add a quadratic regression over the top as well.
 
 
-```r
-library(tidymodels)
-```
-
-```
-## ── Attaching packages ────────────────────────────────────── tidymodels 0.1.1 ──
-```
-
-```
-## ✓ broom     0.7.2      ✓ recipes   0.1.14
-## ✓ dials     0.0.9      ✓ rsample   0.0.8 
-## ✓ infer     0.5.3      ✓ tune      0.1.1 
-## ✓ modeldata 0.1.0      ✓ workflows 0.2.1 
-## ✓ parsnip   0.1.3      ✓ yardstick 0.0.7
-```
-
-```
-## ── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
-## x scales::discard() masks purrr::discard()
-## x dplyr::filter()   masks stats::filter()
-## x recipes::fixed()  masks stringr::fixed()
-## x dplyr::lag()      masks stats::lag()
-## x yardstick::spec() masks readr::spec()
-## x recipes::step()   masks stats::step()
-```
 
 ```r
 # Split the data
@@ -630,24 +603,18 @@ ergo_split <-
 training(ergo_split) %>% 
     ggplot() +
     geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
-    geom_smooth(aes(cadence, power), formula = y ~ I(x^2)) +
+    geom_smooth(aes(cadence, power), method = 'lm', formula = y ~ I(x^2)) +
     labs(
+        title = 'Ergo - Cadence versus Power Output',
+        subtitle = 'with a quadratic overlay',
         x = 'Cadence',
-        y = 'Power',
-        title = 'Ergo - Cadence versus Power Output'
+        y = 'Power'
     )
 ```
 
-```
-## `geom_smooth()` using method = 'gam'
-```
-
-```
-## Warning in attr(pterms[tind[j]], "term.label"): partial match of 'term.label' to
-## 'term.labels'
-```
-
 <img src="index_files/figure-html/unnamed-chunk-6-1.png" width="672" />
+
+OK... that' not I was expecting 
 
 # Tidying the Data
 
@@ -772,7 +739,7 @@ glance(ergo_model)
 ## # A tibble: 1 x 12
 ##   r.squared adj.r.squared sigma statistic p.value    df  logLik    AIC    BIC
 ##       <dbl>         <dbl> <dbl>     <dbl>   <dbl> <dbl>   <dbl>  <dbl>  <dbl>
-## 1     0.992         0.992  7.53  2178439.       0     1 -63917. 1.28e5 1.28e5
+## 1     0.992         0.992  7.43  2256157.       0     1 -63655. 1.27e5 1.27e5
 ## # … with 3 more variables: deviance <dbl>, df.residual <int>, nobs <int>
 ```
 
@@ -801,9 +768,9 @@ ergo_model %>%
 ## # A tibble: 3 x 3
 ##   .metric .estimator .estimate
 ##   <chr>   <chr>          <dbl>
-## 1 rmse    standard       7.48 
-## 2 rsq     standard       0.992
-## 3 mae     standard       5.66
+## 1 rmse    standard       7.79 
+## 2 rsq     standard       0.991
+## 3 mae     standard       5.59
 ```
 
 ```r
@@ -832,8 +799,8 @@ tidy(ergo_model)
 ## # A tibble: 2 x 5
 ##   term          estimate   std.error statistic  p.value
 ##   <chr>            <dbl>       <dbl>     <dbl>    <dbl>
-## 1 (Intercept)  -2.19     0.151           -14.5 3.11e-47
-## 2 I(cadence^3)  0.000628 0.000000426    1476.  0.
+## 1 (Intercept)  -2.27     0.149           -15.3 1.29e-52
+## 2 I(cadence^3)  0.000628 0.000000418    1502.  0.
 ```
 
 So if our formula is `\(P = \alpha v^3\)`, then `\(\alpha = 0.000616\)`, and thus:
