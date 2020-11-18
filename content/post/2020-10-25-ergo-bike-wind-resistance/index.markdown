@@ -36,6 +36,7 @@ library(lubridate)
 library(xml2)
 library(here)
 library(gt)
+library(glue)
 ```
 
 
@@ -52,19 +53,24 @@ tcx <-
     transmute(xml = map(files, ~read_xml(.x))) %>% 
     mutate(.id = 1:n())
 
-head(tcx)
+print(tcx)
 ```
 
 ```
-## # A tibble: 6 x 2
-##   xml          .id
-##   <list>     <int>
-## 1 <xml_dcmn>     1
-## 2 <xml_dcmn>     2
-## 3 <xml_dcmn>     3
-## 4 <xml_dcmn>     4
-## 5 <xml_dcmn>     5
-## 6 <xml_dcmn>     6
+## # A tibble: 29 x 2
+##    xml          .id
+##    <list>     <int>
+##  1 <xml_dcmn>     1
+##  2 <xml_dcmn>     2
+##  3 <xml_dcmn>     3
+##  4 <xml_dcmn>     4
+##  5 <xml_dcmn>     5
+##  6 <xml_dcmn>     6
+##  7 <xml_dcmn>     7
+##  8 <xml_dcmn>     8
+##  9 <xml_dcmn>     9
+## 10 <xml_dcmn>    10
+## # … with 19 more rows
 ```
 
 The next step is to pull out the time, cadence and power data out of the XML file. The XML file is structured into *Activities*, *Laps*, and *Tracks*. Within each track are *Trackpoints*, which represent each polling interval, and contain the values for all of the data sources polled in the interval. Here's an example:
@@ -84,7 +90,7 @@ The next step is to pull out the time, cadence and power data out of the XML fil
 </Trackpoint>
 ```
 
-Out `pull_tcx_data()` function takes a TCX XML document uses XPaths to extract out the values we need. It first finds every trackpoint in the document, and then for each trackpoint, extracts out the time, cadence, and power values. It then combines and returns all of these into a tibble. Admittedly, the function in its current form is fragile and could do with more error checking. For the purposes of this article it does what it needs to do.
+Out `pull_tcx_data()` function takes a TCX XML document uses XPaths to extract out the values we need. The initial version first searched for all trackpoints, but I found that there were some that had child *time* elements, but no *cadence* or *power*. The version below finds all trackpoints that are the parent of a *cadence* element. It then extracts out the *time*, *cadence*, and *power* values. It then combines and returns all of these into a tibble. Admittedly, the function in its current form is fragile and could do with more error checking. For the purposes of this article it does what it needs to do.
 
 
 
@@ -92,40 +98,29 @@ Out `pull_tcx_data()` function takes a TCX XML document uses XPaths to extract o
 pull_tcx_data <- function(tcx) {
     # Strip out the namespace and 
     # pull out each trackpoint
-    trackpoints <- 
+    tp <- 
         tcx %>% 
         xml_ns_strip() %>% 
-        xml_find_all('.//Trackpoint')
+        xml_find_all('.//Trackpoint/Cadence') %>%
+        xml_parents()
     
-    # Timestamp for each trackpoint
-    time <-
-        trackpoints %>% 
-        xml_find_all('./Time') %>% 
-        xml_text() %>% 
-        ymd_hms()
-        
-    # Cadence at each trackpoint
-    cadence <-
-        trackpoints %>%
-        xml_find_all('./Cadence') %>% 
-        xml_text() %>% 
-        as.integer()
-   
-    # There is sometimes a leading timestamp with no data.
-    # If so, we strip the first timestamp out
-    if (length(time) == length(cadence) + 1) {
-        time <- time[-1]
-    }
-    
-    # Power at each trackpoint
-    power <-
-        trackpoints %>% 
-        xml_find_all('./Extensions/TPX/Watts') %>% 
-        xml_text() %>% 
-        as.integer()
-    
-    # Create the data frame 
-    tibble(datetime = time, cadence = cadence, power = power)
+    tibble(
+      # Timestamp for each trackpoint
+        datetime = tp %>% 
+          xml_find_all('./Time') %>% 
+          xml_text() %>% 
+          ymd_hms(),
+        # Cadence at each trackpoint
+        cadence = tp %>% 
+          xml_find_all('./Cadence') %>% 
+          xml_text() %>% 
+          as.integer(),
+      # Power at each trackpoint
+        power = tp %>% 
+          xml_find_all('./Extensions/TPX/Watts') %>% 
+          xml_text() %>% 
+          as.integer()
+    )
 }
 ```
 
@@ -155,7 +150,7 @@ ergo_data %>%
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#xnrxfeaprb .gt_table {
+#ocsluqsbsc .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -180,7 +175,7 @@ ergo_data %>%
   border-left-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_heading {
+#ocsluqsbsc .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -192,7 +187,7 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_title {
+#ocsluqsbsc .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -202,7 +197,7 @@ ergo_data %>%
   border-bottom-width: 0;
 }
 
-#xnrxfeaprb .gt_subtitle {
+#ocsluqsbsc .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -212,13 +207,13 @@ ergo_data %>%
   border-top-width: 0;
 }
 
-#xnrxfeaprb .gt_bottom_border {
+#ocsluqsbsc .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_col_headings {
+#ocsluqsbsc .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -233,7 +228,7 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_col_heading {
+#ocsluqsbsc .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -253,7 +248,7 @@ ergo_data %>%
   overflow-x: hidden;
 }
 
-#xnrxfeaprb .gt_column_spanner_outer {
+#ocsluqsbsc .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -265,15 +260,15 @@ ergo_data %>%
   padding-right: 4px;
 }
 
-#xnrxfeaprb .gt_column_spanner_outer:first-child {
+#ocsluqsbsc .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#xnrxfeaprb .gt_column_spanner_outer:last-child {
+#ocsluqsbsc .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#xnrxfeaprb .gt_column_spanner {
+#ocsluqsbsc .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -285,7 +280,7 @@ ergo_data %>%
   width: 100%;
 }
 
-#xnrxfeaprb .gt_group_heading {
+#ocsluqsbsc .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -307,7 +302,7 @@ ergo_data %>%
   vertical-align: middle;
 }
 
-#xnrxfeaprb .gt_empty_group_heading {
+#ocsluqsbsc .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -322,15 +317,15 @@ ergo_data %>%
   vertical-align: middle;
 }
 
-#xnrxfeaprb .gt_from_md > :first-child {
+#ocsluqsbsc .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#xnrxfeaprb .gt_from_md > :last-child {
+#ocsluqsbsc .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#xnrxfeaprb .gt_row {
+#ocsluqsbsc .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -349,7 +344,7 @@ ergo_data %>%
   overflow-x: hidden;
 }
 
-#xnrxfeaprb .gt_stub {
+#ocsluqsbsc .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -361,7 +356,7 @@ ergo_data %>%
   padding-left: 12px;
 }
 
-#xnrxfeaprb .gt_summary_row {
+#ocsluqsbsc .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -371,7 +366,7 @@ ergo_data %>%
   padding-right: 5px;
 }
 
-#xnrxfeaprb .gt_first_summary_row {
+#ocsluqsbsc .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -381,7 +376,7 @@ ergo_data %>%
   border-top-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_grand_summary_row {
+#ocsluqsbsc .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -391,7 +386,7 @@ ergo_data %>%
   padding-right: 5px;
 }
 
-#xnrxfeaprb .gt_first_grand_summary_row {
+#ocsluqsbsc .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -401,11 +396,11 @@ ergo_data %>%
   border-top-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_striped {
+#ocsluqsbsc .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#xnrxfeaprb .gt_table_body {
+#ocsluqsbsc .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -414,7 +409,7 @@ ergo_data %>%
   border-bottom-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_footnotes {
+#ocsluqsbsc .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -428,13 +423,13 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_footnote {
+#ocsluqsbsc .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#xnrxfeaprb .gt_sourcenotes {
+#ocsluqsbsc .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -448,46 +443,46 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#xnrxfeaprb .gt_sourcenote {
+#ocsluqsbsc .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#xnrxfeaprb .gt_left {
+#ocsluqsbsc .gt_left {
   text-align: left;
 }
 
-#xnrxfeaprb .gt_center {
+#ocsluqsbsc .gt_center {
   text-align: center;
 }
 
-#xnrxfeaprb .gt_right {
+#ocsluqsbsc .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#xnrxfeaprb .gt_font_normal {
+#ocsluqsbsc .gt_font_normal {
   font-weight: normal;
 }
 
-#xnrxfeaprb .gt_font_bold {
+#ocsluqsbsc .gt_font_bold {
   font-weight: bold;
 }
 
-#xnrxfeaprb .gt_font_italic {
+#ocsluqsbsc .gt_font_italic {
   font-style: italic;
 }
 
-#xnrxfeaprb .gt_super {
+#ocsluqsbsc .gt_super {
   font-size: 65%;
 }
 
-#xnrxfeaprb .gt_footnote_marks {
+#ocsluqsbsc .gt_footnote_marks {
   font-style: italic;
   font-size: 65%;
 }
 </style>
-<div id="xnrxfeaprb" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<div id="ocsluqsbsc" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
   
   <thead class="gt_col_headings">
     <tr>
@@ -501,44 +496,44 @@ ergo_data %>%
   <tbody class="gt_table_body">
     <tr>
       <td class="gt_row gt_center">1</td>
-      <td class="gt_row gt_left">2020-06-14 04:21:00</td>
-      <td class="gt_row gt_center">64</td>
-      <td class="gt_row gt_center">156</td>
+      <td class="gt_row gt_left">2020-05-01 02:35:00</td>
+      <td class="gt_row gt_center">62</td>
+      <td class="gt_row gt_center">161</td>
       <td class="gt_row gt_center">0</td>
     </tr>
     <tr>
       <td class="gt_row gt_center">1</td>
-      <td class="gt_row gt_left">2020-06-14 04:21:01</td>
-      <td class="gt_row gt_center">64</td>
-      <td class="gt_row gt_center">162</td>
+      <td class="gt_row gt_left">2020-05-01 02:35:01</td>
+      <td class="gt_row gt_center">63</td>
+      <td class="gt_row gt_center">173</td>
       <td class="gt_row gt_center">1</td>
     </tr>
     <tr>
       <td class="gt_row gt_center">1</td>
-      <td class="gt_row gt_left">2020-06-14 04:21:02</td>
+      <td class="gt_row gt_left">2020-05-01 02:35:02</td>
       <td class="gt_row gt_center">63</td>
-      <td class="gt_row gt_center">154</td>
+      <td class="gt_row gt_center">150</td>
       <td class="gt_row gt_center">2</td>
     </tr>
     <tr>
       <td class="gt_row gt_center">1</td>
-      <td class="gt_row gt_left">2020-06-14 04:21:03</td>
-      <td class="gt_row gt_center">65</td>
-      <td class="gt_row gt_center">178</td>
+      <td class="gt_row gt_left">2020-05-01 02:35:03</td>
+      <td class="gt_row gt_center">63</td>
+      <td class="gt_row gt_center">160</td>
       <td class="gt_row gt_center">3</td>
     </tr>
     <tr>
       <td class="gt_row gt_center">1</td>
-      <td class="gt_row gt_left">2020-06-14 04:21:04</td>
-      <td class="gt_row gt_center">66</td>
-      <td class="gt_row gt_center">178</td>
+      <td class="gt_row gt_left">2020-05-01 02:35:04</td>
+      <td class="gt_row gt_center">64</td>
+      <td class="gt_row gt_center">155</td>
       <td class="gt_row gt_center">4</td>
     </tr>
     <tr>
       <td class="gt_row gt_center">1</td>
-      <td class="gt_row gt_left">2020-06-14 04:21:05</td>
-      <td class="gt_row gt_center">67</td>
-      <td class="gt_row gt_center">175</td>
+      <td class="gt_row gt_left">2020-05-01 02:35:05</td>
+      <td class="gt_row gt_center">62</td>
+      <td class="gt_row gt_center">163</td>
       <td class="gt_row gt_center">5</td>
     </tr>
   </tbody>
@@ -546,12 +541,13 @@ ergo_data %>%
   
 </table></div><!--/html_preserve-->
 
+
 Let's take a look at the first six rides: 
 
 
 ```r
 ergo_data %>% 
-    filter(.id == 1:6) %>%  
+    filter(.id %in% c(1:6)) %>%  
     ggplot() +
     geom_line(aes(second, power)) +
     facet_wrap(~.id, scales = 'free') +
@@ -589,7 +585,38 @@ So we'll perform a regression of the square of our cadence variable on to power,
 
 Some of you have probably seen the mistake I've made here. It's akin to not reading the questions as closely as you should on an exam. I'm leaving it in because it's instructional, and this particular mistake lead me in a direction that made the end result better.
 
-After noting the drag equation it was time to take our first look at the data. I split the data into a training and test set and mapped out the cadence versus power of the training set. I thought I may as well add a quadratic regression over the top as well.
+# Velocity Conversion
+
+As it currently stands, our 'velocity' is in RPM. We could stick with this, but things might be easier if we move to metres per second.
+
+The ergo has four sets of gears and two chains: a `\(46 \to 14\)`, passing through to a `\(46 \to 17\)`. We multiply the gear ratios together to calculate the RPM of the wheel: 
+
+$$ RPM_w = \bigg(\frac{46}{14} \times \frac{46}{17}\bigg)RPM_p \\
+
+= 8.89RPM_p
+$$
+So for every pedal revolution, the wheel will rotate 8.89 times.
+
+We'll use the outside of the wheel for our calculations. The distance from the hub to the wheel is .325 metres, making the circumference `\(2 \times \pi \times .325 = 2.04\)`.
+
+Putting this all together, i
+
+$$ 
+v_w = \frac{2.04 \times 8.89 \times RPM_p }{60} \\
+\sim \frac{3}{10}RPM_p
+$$
+
+Let's convert the cadence to velocity:
+
+
+```r
+ergo_data <-
+  ergo_data %>% mutate(velocity = (3/10) * cadence)
+```
+
+# Tesing a Fit
+
+After noting the drag equation it was time to take our first look at the velocity/power relationship. The data is split into a training and test set and the variables are mapped. I thought I may as well add a quadratic regression over the top as well.
 
 
 
@@ -602,22 +629,27 @@ ergo_split <-
 # Viewing the data
 training(ergo_split) %>% 
     ggplot() +
-    geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
-    geom_smooth(aes(cadence, power), method = 'lm', formula = y ~ I(x^2)) +
+    geom_jitter(aes(velocity, power), alpha = .3, size = .4) +
+    geom_smooth(aes(velocity, power), method = 'lm', formula = y ~ I(x^2)) +
     labs(
-        title = 'Ergo - Cadence versus Power Output',
+        title = 'Ergo - Velocity versus Power Output',
         subtitle = 'with a quadratic overlay',
-        x = 'Cadence',
-        y = 'Power'
+        x = 'Velocity (m/s)',
+        y = 'Power (Watts)'
     )
 ```
 
-<img src="index_files/figure-html/unnamed-chunk-6-1.png" width="672" />
+<img src="index_files/figure-html/unnamed-chunk-7-1.png" width="672" />
 
-OK... that' not I was expecting 
+OK... that's not I was expecting. I was expecting a nice fit and a wrap up of the article early! Instead I'm going to have to actually *think* about the data.
 
-# Tidying the Data
+Of course the reason this isn't fitting is due to an incorrect assumption on my part. But what this did do is force me to do something I should done earlier: think about the data.
 
+# Diving Into the Data 
+
+Rather than taking the data as is, let's think about the mechanics of the system and *rates of change* of cadence, rather than absolute values.
+
+I'll add two columns, `cadence_prime` and `power_prime`, which are the rates of change of the two variables within each ride:
 
 
 ```r
@@ -629,108 +661,90 @@ ergo_data <-
         power_prime = power - lag(power)
     ) %>% 
     ungroup()
-
-ergo_data %>% 
-    filter(cadence_prime %in% c(-3:3)) %>% 
-    ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1)
 ```
 
-<img src="index_files/figure-html/unnamed-chunk-7-1.png" width="672" />
+Let's take a look at the distribution of power changes split by cadence changes from -4 rpm/s to 4 rpm/s. Not that both the x and y axis below are 'free'.
+
 
 ```r
 ergo_data %>% 
-    filter(cadence_prime %in% c(-3:3)) %>% 
-    ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1) +
-    geom_vline(aes(xintercept = 0), colour = 'blue') +
-    facet_grid(rows = vars(cadence_prime), scales = 'free_y') +
-    labs(
-        title = 'Count of Changes in Power',
-        subtitle = 'Grouped by Changes in Cadence',
-        x = 'Change in Power',
-        y = 'Count'
-    )
-```
-
-<img src="index_files/figure-html/unnamed-chunk-7-2.png" width="672" />
-
-
-```r
-ergo_filtered <-
-    ergo_data %>% 
-    filter(
-        cadence_prime > -1,
-        cadence_prime < 1
-    ) %>% 
-    mutate(
-        power_prime_scaled = scale(power_prime),
-        outside_alpha = ifelse(
-            power_prime_scaled < -1.96 | power_prime_scaled > 1.96, 
-            TRUE, 
-            FALSE
-        )
-    ) %>%
-    filter(!outside_alpha) 
-
-ergo_filtered %>% 
-    ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1)
-```
-
-<img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" />
-
-
-```r
-ergo_filtered %>% 
-    ggplot() +
-    geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
-    geom_smooth(aes(cadence, power, colour = 'cadence^2'), formula = y ~ I(x^2)) +
-    geom_smooth(aes(cadence, power, colour = 'cadence^3'), formula = y ~ I(x^3)) +
-    labs(
-        x = 'Cadence',
-        y = 'Power',
-        title = 'Ergo - Cadence versus Power Output'
-    )
-```
-
-```
-## `geom_smooth()` using method = 'gam'
-```
-
-```
-## Warning in attr(pterms[tind[j]], "term.label"): partial match of 'term.label' to
-## 'term.labels'
-```
-
-```
-## `geom_smooth()` using method = 'gam'
-```
-
-```
-## Warning in attr(pterms[tind[j]], "term.label"): partial match of 'term.label' to
-## 'term.labels'
+  filter(cadence_prime %in% -4:4) %>% 
+  ggplot() +
+  geom_histogram(aes(power_prime), binwidth = 1) +
+  facet_wrap(~cadence_prime, scales = 'free') +
+  labs(
+    x = 'Delta Watts',
+    y = 'Count',
+    title = 'Count of changes in Watts',
+    subtitle = 'Split by change in cadence from -4 to 4'
+  
+  )
 ```
 
 <img src="index_files/figure-html/unnamed-chunk-9-1.png" width="672" />
-# Theory Revisited
+
+Looking at this, there are two key takeaways:
+
+- For positive cadence change the distribution looks similar and the mean shifts right, but the data gets noisier and less Gaussian. These qualities are in the ball park of what we would expect.
+- For zero and negative changes there is a big long tail towards negative power values, this is a marked difference between the positive cadence changes.
+
+The reason for the long tails: momentum. When we remove power from the pedals, the cadence does not drop by a similar amount. In the most extreme example we can remove all of the power on the pedals, but the cadence will only slowly decrease.
+
+What we need to do is to filter out the noise and extract out the signal. Normally filtering out data in other types of analysis (inferential and predictive) is frowned upon, as we may be unknowingly filtering out the signal. In our instance it's different as I have a pretty good idea where the signal is. A reasonable approach is to: 
+
+1. Filter out everything except the points where the cadence is constant, i.e. the rate of change of the cadence is 0.
+1. Filter out power values that are greater than two standard deviations from 0.
+
+
+```r
+ergo_filtered <- 
+  ergo_data %>%
+  drop_na() %>% 
+  filter(
+    between(
+      power_prime, 
+      quantile(power_prime, .025), 
+      quantile(power_prime, .975)
+    )
+  )
+
+ergo_filtered %>% 
+  ggplot() +
+  geom_histogram(aes(power_prime), binwidth = 1)
+```
+
+<img src="index_files/figure-html/unnamed-chunk-10-1.png" width="672" />
+
+
+```r
+ergo_filtered_split <- initial_split(ergo_filtered)
+
+training(ergo_filtered_split) %>% 
+    ggplot() +
+    geom_jitter(aes(velocity, power), alpha = .3, size = .4) +
+    geom_smooth(aes(velocity, power, colour = 'v^2'), method = 'lm', formula = y ~ I(x^2)) +
+    geom_smooth(aes(velocity, power, colour = 'v^3'), method = 'lm', formula = y ~ I(x^3)) +
+    labs(
+        title = 'Ergo - Velocity versus Power Output',
+        subtitle = 'with a quadratic overlay',
+        x = 'Velocity (m/s)',
+        y = 'Power (Watts)',
+        colour = 'Regression Fit'
+    )
+```
+
+<img src="index_files/figure-html/unnamed-chunk-11-1.png" width="672" />
+
 
 # Modelling
 
 
 ```r
-#####################
-# Need to update this with the filtered data, not just the original data
-# This line is a repeat of the one up top.
-###################
-###################
-ergo_split <- initial_split(ergo_filtered)
-
 # Model the data
 ergo_model <-
     linear_reg() %>% 
     set_engine('lm') %>% 
-    fit(power ~ I(cadence^3), data = training(ergo_split))
+    fit(power ~ I(velocity^3), data = training(ergo_filtered_split))
 
 glance(ergo_model)
 ```
@@ -739,22 +753,24 @@ glance(ergo_model)
 ## # A tibble: 1 x 12
 ##   r.squared adj.r.squared sigma statistic p.value    df  logLik    AIC    BIC
 ##       <dbl>         <dbl> <dbl>     <dbl>   <dbl> <dbl>   <dbl>  <dbl>  <dbl>
-## 1     0.992         0.992  7.43  2256157.       0     1 -63655. 1.27e5 1.27e5
+## 1     0.988         0.988  8.81  4078011.       0     1 -1.82e5 3.64e5 3.64e5
 ## # … with 3 more variables: deviance <dbl>, df.residual <int>, nobs <int>
 ```
 
-
-
-
 ```r
 ergo_model %>% 
-    pluck('fit') %>% 
-    augment() %>% 
-    ggplot() +
-    geom_point(aes(.fitted, .std.resid), size = .1)
+  pluck('fit') %>% 
+  augment() %>% 
+  ggplot() +
+  geom_jitter(aes(.fitted, .std.resid), size = .1) +
+  labs(
+    title = 'Fitted versus Standardised Residuals',
+    x = 'Fitted Value',
+    y = 'Standardised Residual'
+  )
 ```
 
-<img src="index_files/figure-html/unnamed-chunk-11-1.png" width="672" />
+<img src="index_files/figure-html/unnamed-chunk-13-1.png" width="672" />
 
 
 ```r
@@ -768,25 +784,10 @@ ergo_model %>%
 ## # A tibble: 3 x 3
 ##   .metric .estimator .estimate
 ##   <chr>   <chr>          <dbl>
-## 1 rmse    standard       7.79 
-## 2 rsq     standard       0.991
-## 3 mae     standard       5.59
+## 1 rmse    standard      14.8  
+## 2 rsq     standard       0.971
+## 3 mae     standard       7.61
 ```
-
-```r
-predict_data <- 
-    tibble(cadence = 0:max(ergo_data$cadence)) %>% 
-    mutate(power = predict(ergo_model, new_data = .) %>% pull(.pred))
-
-ergo_data %>% 
-    ggplot() +
-    geom_jitter(aes(cadence, power), size = .1) +
-    geom_line(aes(cadence, power), colour = 'orange', data = predict_data)
-```
-
-<img src="index_files/figure-html/unnamed-chunk-13-1.png" width="672" />
-
-
 
 # Inference
 
@@ -797,25 +798,27 @@ tidy(ergo_model)
 
 ```
 ## # A tibble: 2 x 5
-##   term          estimate   std.error statistic  p.value
-##   <chr>            <dbl>       <dbl>     <dbl>    <dbl>
-## 1 (Intercept)  -2.27     0.149           -15.3 1.29e-52
-## 2 I(cadence^3)  0.000628 0.000000418    1502.  0.
+##   term          estimate std.error statistic   p.value
+##   <chr>            <dbl>     <dbl>     <dbl>     <dbl>
+## 1 (Intercept)    -2.77   0.111         -25.0 7.93e-137
+## 2 I(velocity^3)   0.0233 0.0000115    2019.  0.
 ```
 
-So if our formula is `\(P = \alpha v^3\)`, then `\(\alpha = 0.000616\)`, and thus:
+So if our formula is `\(P = \alpha v^3\)`, then `\(\alpha = 0.0232\)`, and thus:
 
 $$
 P = \alpha v^3 \\
 \alpha =  \frac{1}{2} \rho C_D A \\
-\frac{1}{2} \rho C_D A = 0.000616 \\
-C_D = \frac{2 \times 0.000616}{\rho A} \\
-C_D = \frac{0.001232}{\rho A}
+\frac{1}{2} \rho C_D A = 0.0232 \\
+C_D = \frac{2 \times 0.0232}{\rho A} \\
+C_D = \frac{0.0464}{\rho A}
 $$
 
-My house sits on around 20°C, and looking up the density of air at sea level is approximately `\(1.2041 \text{ kg/m^3}\)`. Cross section area
+My house sits on around 20°C, and looking up the density of air at sea level is approximately `\(1.2041 \text{ kg/m^3}\)`. There are six blades, each of which are a trapezoid with an area of `\(0.00675m^2\)`, so the total area of the blades is `\(0.0405m^2\)`.
+
+Plugging this all in we get:
 
 $$
-C_D = \frac{0.001232}{1.2041 \times .5} \\
-C_D = 
+C_D = \frac{0.0464}{1.2041 \times 0.0405} \\
+= 0.95
 $$

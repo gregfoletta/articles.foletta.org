@@ -35,6 +35,7 @@ library(lubridate)
 library(xml2)
 library(here)
 library(gt)
+library(glue)
 ```
 
 ```{r}
@@ -50,7 +51,7 @@ tcx <-
     transmute(xml = map(files, ~read_xml(.x))) %>% 
     mutate(.id = 1:n())
 
-head(tcx)
+print(tcx)
 ```
 
 The next step is to pull out the time, cadence and power data out of the XML file. The XML file is structured into *Activities*, *Laps*, and *Tracks*. Within each track are *Trackpoints*, which represent each polling interval, and contain the values for all of the data sources polled in the interval. Here's an example:
@@ -70,47 +71,36 @@ The next step is to pull out the time, cadence and power data out of the XML fil
 </Trackpoint>
 ```
 
-Out `pull_tcx_data()` function takes a TCX XML document uses XPaths to extract out the values we need. It first finds every trackpoint in the document, and then for each trackpoint, extracts out the time, cadence, and power values. It then combines and returns all of these into a tibble. Admittedly, the function in its current form is fragile and could do with more error checking. For the purposes of this article it does what it needs to do.
+Out `pull_tcx_data()` function takes a TCX XML document uses XPaths to extract out the values we need. The initial version first searched for all trackpoints, but I found that there were some that had child *time* elements, but no *cadence* or *power*. The version below finds all trackpoints that are the parent of a *cadence* element. It then extracts out the *time*, *cadence*, and *power* values. It then combines and returns all of these into a tibble. Admittedly, the function in its current form is fragile and could do with more error checking. For the purposes of this article it does what it needs to do.
 
 
 ```{r}
 pull_tcx_data <- function(tcx) {
     # Strip out the namespace and 
     # pull out each trackpoint
-    trackpoints <- 
+    tp <- 
         tcx %>% 
         xml_ns_strip() %>% 
-        xml_find_all('.//Trackpoint')
+        xml_find_all('.//Trackpoint/Cadence') %>%
+        xml_parents()
     
-    # Timestamp for each trackpoint
-    time <-
-        trackpoints %>% 
-        xml_find_all('./Time') %>% 
-        xml_text() %>% 
-        ymd_hms()
-        
-    # Cadence at each trackpoint
-    cadence <-
-        trackpoints %>%
-        xml_find_all('./Cadence') %>% 
-        xml_text() %>% 
-        as.integer()
-   
-    # There is sometimes a leading timestamp with no data.
-    # If so, we strip the first timestamp out
-    if (length(time) == length(cadence) + 1) {
-        time <- time[-1]
-    }
-    
-    # Power at each trackpoint
-    power <-
-        trackpoints %>% 
-        xml_find_all('./Extensions/TPX/Watts') %>% 
-        xml_text() %>% 
-        as.integer()
-    
-    # Create the data frame 
-    tibble(datetime = time, cadence = cadence, power = power)
+    tibble(
+      # Timestamp for each trackpoint
+        datetime = tp %>% 
+          xml_find_all('./Time') %>% 
+          xml_text() %>% 
+          ymd_hms(),
+        # Cadence at each trackpoint
+        cadence = tp %>% 
+          xml_find_all('./Cadence') %>% 
+          xml_text() %>% 
+          as.integer(),
+      # Power at each trackpoint
+        power = tp %>% 
+          xml_find_all('./Extensions/TPX/Watts') %>% 
+          xml_text() %>% 
+          as.integer()
+    )
 }
 ```
 
@@ -135,11 +125,12 @@ ergo_data %>%
   gt()
 ```
 
+
 Let's take a look at the first six rides: 
 
 ```{r}
 ergo_data %>% 
-    filter(.id == 1:6) %>%  
+    filter(.id %in% c(1:6)) %>%  
     ggplot() +
     geom_line(aes(second, power)) +
     facet_wrap(~.id, scales = 'free') +
@@ -175,11 +166,40 @@ So we'll perform a regression of the square of our cadence variable on to power,
 
 Some of you have probably seen the mistake I've made here. It's akin to not reading the questions as closely as you should on an exam. I'm leaving it in because it's instructional, and this particular mistake lead me in a direction that made the end result better.
 
-After noting the drag equation it was time to take our first look at the data. I split the data into a training and test set and mapped out the cadence versus power of the training set. I thought I may as well add a quadratic regression over the top as well.
+# Velocity Conversion
+
+As it currently stands, our 'velocity' is in RPM. We could stick with this, but things might be easier if we move to metres per second.
+
+The ergo has four sets of gears and two chains: a $46 \to 14$, passing through to a $46 \to 17$. We multiply the gear ratios together to calculate the RPM of the wheel: 
+
+$$ RPM_w = \bigg(\frac{46}{14} \times \frac{46}{17}\bigg)RPM_p \\
+
+= 8.89RPM_p
+$$
+So for every pedal revolution, the wheel will rotate 8.89 times.
+
+We'll use the outside of the wheel for our calculations. The distance from the hub to the wheel is .325 metres, making the circumference $2 \times \pi \times .325 = 2.04$.
+
+Putting this all together, i
+
+$$ 
+v_w = \frac{2.04 \times 8.89 \times RPM_p }{60} \\
+\sim \frac{3}{10}RPM_p
+$$
+
+Let's convert the cadence to velocity:
+
+```{r}
+ergo_data <-
+  ergo_data %>% mutate(velocity = (3/10) * cadence)
+```
+
+# Tesing a Fit
+
+After noting the drag equation it was time to take our first look at the velocity/power relationship. The data is split into a training and test set and the variables are mapped. I thought I may as well add a quadratic regression over the top as well.
 
 
 ```{r}
-
 # Split the data
 ergo_split <-
     ergo_data %>% 
@@ -188,20 +208,25 @@ ergo_split <-
 # Viewing the data
 training(ergo_split) %>% 
     ggplot() +
-    geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
-    geom_smooth(aes(cadence, power), method = 'lm', formula = y ~ I(x^2)) +
+    geom_jitter(aes(velocity, power), alpha = .3, size = .4) +
+    geom_smooth(aes(velocity, power), method = 'lm', formula = y ~ I(x^2)) +
     labs(
-        title = 'Ergo - Cadence versus Power Output',
+        title = 'Ergo - Velocity versus Power Output',
         subtitle = 'with a quadratic overlay',
-        x = 'Cadence',
-        y = 'Power'
+        x = 'Velocity (m/s)',
+        y = 'Power (Watts)'
     )
 ```
 
-OK... that' not I was expecting 
+OK... that's not I was expecting. I was expecting a nice fit and a wrap up of the article early! Instead I'm going to have to actually *think* about the data.
 
-# Tidying the Data
+Of course the reason this isn't fitting is due to an incorrect assumption on my part. But what this did do is force me to do something I should done earlier: think about the data.
 
+# Diving Into the Data 
+
+Rather than taking the data as is, let's think about the mechanics of the system and *rates of change* of cadence, rather than absolute values.
+
+I'll add two columns, `cadence_prime` and `power_prime`, which are the rates of change of the two variables within each ride:
 
 ```{r}
 ergo_data <-
@@ -212,90 +237,95 @@ ergo_data <-
         power_prime = power - lag(power)
     ) %>% 
     ungroup()
+```
 
+Let's take a look at the distribution of power changes split by cadence changes from -4 rpm/s to 4 rpm/s. Not that both the x and y axis below are 'free'.
+
+```{r}
 ergo_data %>% 
-    filter(cadence_prime %in% c(-3:3)) %>% 
-    ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1)
+  filter(cadence_prime %in% -4:4) %>% 
+  ggplot() +
+  geom_histogram(aes(power_prime), binwidth = 1) +
+  facet_wrap(~cadence_prime, scales = 'free') +
+  labs(
+    x = 'Delta Watts',
+    y = 'Count',
+    title = 'Count of changes in Watts',
+    subtitle = 'Split by change in cadence from -4 to 4'
+  
+  )
+```
 
+Looking at this, there are two key takeaways:
 
-ergo_data %>% 
-    filter(cadence_prime %in% c(-3:3)) %>% 
-    ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1) +
-    geom_vline(aes(xintercept = 0), colour = 'blue') +
-    facet_grid(rows = vars(cadence_prime), scales = 'free_y') +
-    labs(
-        title = 'Count of Changes in Power',
-        subtitle = 'Grouped by Changes in Cadence',
-        x = 'Change in Power',
-        y = 'Count'
+- For positive cadence change the distribution looks similar and the mean shifts right, but the data gets noisier and less Gaussian. These qualities are in the ball park of what we would expect.
+- For zero and negative changes there is a big long tail towards negative power values, this is a marked difference between the positive cadence changes.
+
+The reason for the long tails: momentum. When we remove power from the pedals, the cadence does not drop by a similar amount. In the most extreme example we can remove all of the power on the pedals, but the cadence will only slowly decrease.
+
+What we need to do is to filter out the noise and extract out the signal. Normally filtering out data in other types of analysis (inferential and predictive) is frowned upon, as we may be unknowingly filtering out the signal. In our instance it's different as I have a pretty good idea where the signal is. A reasonable approach is to: 
+
+1. Filter out everything except the points where the cadence is constant, i.e. the rate of change of the cadence is 0.
+1. Filter out power values that are greater than two standard deviations from 0.
+
+```{r}
+ergo_filtered <- 
+  ergo_data %>%
+  drop_na() %>% 
+  filter(
+    between(
+      power_prime, 
+      quantile(power_prime, .025), 
+      quantile(power_prime, .975)
     )
+  )
+
+ergo_filtered %>% 
+  ggplot() +
+  geom_histogram(aes(power_prime), binwidth = 1)
 ```
 
 ```{r}
-ergo_filtered <-
-    ergo_data %>% 
-    filter(
-        cadence_prime > -1,
-        cadence_prime < 1
-    ) %>% 
-    mutate(
-        power_prime_scaled = scale(power_prime),
-        outside_alpha = ifelse(
-            power_prime_scaled < -1.96 | power_prime_scaled > 1.96, 
-            TRUE, 
-            FALSE
-        )
-    ) %>%
-    filter(!outside_alpha) 
+ergo_filtered_split <- initial_split(ergo_filtered)
 
-ergo_filtered %>% 
+training(ergo_filtered_split) %>% 
     ggplot() +
-    geom_histogram(aes(power_prime), binwidth = 1)
-```
-
-```{r}
-ergo_filtered %>% 
-    ggplot() +
-    geom_jitter(aes(cadence, power), alpha = .3, size = .4) +
-    geom_smooth(aes(cadence, power, colour = 'cadence^2'), formula = y ~ I(x^2)) +
-    geom_smooth(aes(cadence, power, colour = 'cadence^3'), formula = y ~ I(x^3)) +
+    geom_jitter(aes(velocity, power), alpha = .3, size = .4) +
+    geom_smooth(aes(velocity, power, colour = 'v^2'), method = 'lm', formula = y ~ I(x^2)) +
+    geom_smooth(aes(velocity, power, colour = 'v^3'), method = 'lm', formula = y ~ I(x^3)) +
     labs(
-        x = 'Cadence',
-        y = 'Power',
-        title = 'Ergo - Cadence versus Power Output'
+        title = 'Ergo - Velocity versus Power Output',
+        subtitle = 'with a quadratic overlay',
+        x = 'Velocity (m/s)',
+        y = 'Power (Watts)',
+        colour = 'Regression Fit'
     )
 ```
-# Theory Revisited
+
 
 # Modelling
 
 ```{r}
-#####################
-# Need to update this with the filtered data, not just the original data
-# This line is a repeat of the one up top.
-###################
-###################
-ergo_split <- initial_split(ergo_filtered)
-
 # Model the data
 ergo_model <-
     linear_reg() %>% 
     set_engine('lm') %>% 
-    fit(power ~ I(cadence^3), data = training(ergo_split))
+    fit(power ~ I(velocity^3), data = training(ergo_filtered_split))
 
 glance(ergo_model)
 ```
-
-
-
 ```{r}
 ergo_model %>% 
-    pluck('fit') %>% 
-    augment() %>% 
-    ggplot() +
-    geom_point(aes(.fitted, .std.resid), size = .1)
+  pluck('fit') %>% 
+  augment() %>% 
+  ggplot() +
+  geom_jitter(aes(.fitted, .std.resid), size = .1) +
+  labs(
+    title = 'Fitted versus Standardised Residuals',
+    x = 'Fitted Value',
+    y = 'Standardised Residual'
+  )
+  
 ```
 
 ```{r}
@@ -304,18 +334,6 @@ ergo_model %>%
     bind_cols(testing(ergo_split)) %>%
     metrics(power, .pred)
 ```
-```{r}
-predict_data <- 
-    tibble(cadence = 0:max(ergo_data$cadence)) %>% 
-    mutate(power = predict(ergo_model, new_data = .) %>% pull(.pred))
-
-ergo_data %>% 
-    ggplot() +
-    geom_jitter(aes(cadence, power), size = .1) +
-    geom_line(aes(cadence, power), colour = 'orange', data = predict_data)
-```
-
-
 
 # Inference
 
@@ -323,19 +341,21 @@ ergo_data %>%
 tidy(ergo_model)
 ```
 
-So if our formula is $P = \alpha v^3$, then $\alpha = 0.000616$, and thus:
+So if our formula is $P = \alpha v^3$, then $\alpha = 0.0232$, and thus:
 
 $$
 P = \alpha v^3 \\
 \alpha =  \frac{1}{2} \rho C_D A \\
-\frac{1}{2} \rho C_D A = 0.000616 \\
-C_D = \frac{2 \times 0.000616}{\rho A} \\
-C_D = \frac{0.001232}{\rho A}
+\frac{1}{2} \rho C_D A = 0.0232 \\
+C_D = \frac{2 \times 0.0232}{\rho A} \\
+C_D = \frac{0.0464}{\rho A}
 $$
 
-My house sits on around 20°C, and looking up the density of air at sea level is approximately $1.2041 \text{ kg/m^3}$. Cross section area
+My house sits on around 20°C, and looking up the density of air at sea level is approximately $1.2041 \text{ kg/m^3}$. There are six blades, each of which are a trapezoid with an area of $0.00675m^2$, so the total area of the blades is $0.0405m^2$.
+
+Plugging this all in we get:
 
 $$
-C_D = \frac{0.001232}{1.2041 \times .5} \\
-C_D = 
+C_D = \frac{0.0464}{1.2041 \times 0.0405} \\
+= 0.95
 $$
