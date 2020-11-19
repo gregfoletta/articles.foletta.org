@@ -150,7 +150,7 @@ We've got the data in and tidied it, let's move on to trying to answer the quest
 
 There are many different kinds of analysis that we can perform on data. Sometimes it's *exploratory* analysis, trying to discover connections between the different variables in the data. Other times it's *inferential* analysis, using a sample of data to make inferences about the population at large. Or it could be *predictive* analysis, using historical data to make predictions about the future.
 
-In this instance we're performing *mechanistic* analysis: we already know there's a relationship between our cadence and power, and we have an equation. What we want are the parameters for this equation.
+In this instance we're performing *mechanistic* analysis: we already know there's a relationship between our cadence and power, and we have the equation. What we want are the parameters for this equation.
 
 So with the over-confidence of someone who did first year physics at university, we jump into Wikipedia and find the equation that confirms our assumptions: the drag equation.
 
@@ -168,23 +168,24 @@ Some of you have probably seen the mistake I've made here. It's akin to not read
 
 # Velocity Conversion
 
-As it currently stands, our 'velocity' is in RPM. We could stick with this, but things might be easier if we move to metres per second.
+As it currently stands, our 'velocity' is in RPM. We could stick with this, but things will be easier if we move to metres per second.
 
-The ergo has four sets of gears and two chains: a $46 \to 14$, passing through to a $46 \to 17$. We multiply the gear ratios together to calculate the RPM of the wheel: 
+The ergo has four gears and two chains: a \\(46 \to 14\\), passing through to a \\(46 \to 17\\). We multiply the gear ratios together to calculate the RPM of the wheel. Let \\(c_w\\) and \\(c_p\\) be the cadence of the wheel and pedals: 
 
-$$ RPM_w = \bigg(\frac{46}{14} \times \frac{46}{17}\bigg)RPM_p \\
+$$ 
+c_w = \bigg(\frac{46}{14} \times \frac{46}{17}\bigg)c_p \\
 
-= 8.89RPM_p
+= 8.89C_p
 $$
 So for every pedal revolution, the wheel will rotate 8.89 times.
 
-We'll use the outside of the wheel for our calculations. The distance from the hub to the wheel is .325 metres, making the circumference $2 \times \pi \times .325 = 2.04$.
+We'll use the outside of the wheel for our calculations. The distance from the hub to the wheel is .325 metres, making the circumference \\(2 \times \pi \times .325 = 2.04\\).
 
 Putting this all together, i
 
 $$ 
-v_w = \frac{2.04 \times 8.89 \times RPM_p }{60} \\
-\sim \frac{3}{10}RPM_p
+v_w = \frac{2.04 \times 8.89 \times C_p }{60} \\
+\sim \frac{3}{10}C_p
 $$
 
 Let's convert the cadence to velocity:
@@ -285,6 +286,8 @@ ergo_filtered %>%
   geom_histogram(aes(power_prime), binwidth = 1)
 ```
 
+That's reasonably bell shaped and unbiased in each direction. Thinking I've solved the problem, I graph the quadratic fit again, but am disappointed that it's essentially the same as before. Playing around I fit a cubic and this is the result:
+
 ```{r}
 ergo_filtered_split <- initial_split(ergo_filtered)
 
@@ -302,8 +305,28 @@ training(ergo_filtered_split) %>%
     )
 ```
 
+The relationship is cubic?! Going back to the Wikipedia page I scroll down a few lines to find:
+
+$$ P = \frac{1}{2} \rho v^3 A C_d $$
+The mistake I'd made previously is not paying proper attention to the left hand side of the equation, assuming the relationship would be the same for power and force. But of course:
+
+- Power is work over time
+- Work is force times distance, and
+- Velocity is distance over time
+
+$$ 
+P = W/t \\
+W = Fd \\
+P = Fd/t \\
+P = Fv
+$$
+Multiplying the \\(v\\) through the other side changes our \\(v^2\\) to a \\(v^3\\).
+
+Now that I've come to my senses and we've got the proper relationship, let's model the relationship:
 
 # Modelling
+
+We create a model using the training data and look at the \\(R^2\\) metric:
 
 ```{r}
 # Model the data
@@ -312,8 +335,13 @@ ergo_model <-
     set_engine('lm') %>% 
     fit(power ~ I(velocity^3), data = training(ergo_filtered_split))
 
-glance(ergo_model)
+glance(ergo_model) %>%
+  select(r.squared, adj.r.squared)
 ```
+The model accounts for `r glance(ergo_model)[['r.squared']] %>% round(4) * 100`% of the variation in the training data, which is great. Although we would be rightly concerned if the \\(R^2\\) wasn't in the high 90s.
+
+What about the residuals?
+
 ```{r}
 ergo_model %>% 
   pluck('fit') %>% 
@@ -328,18 +356,28 @@ ergo_model %>%
   
 ```
 
+This also looks pretty good. There's a an interesting hard cut-off at lower power levels, and some oscillation in the variance, but there's reasonable consistency in the variance across the fitted values. We're not going to worry about confidence intervals as part of this article, so looking at these residuals is most out of interest.
+
+Finally we run the model agaisnt the test data:
+
 ```{r}
 ergo_model %>% 
-    predict(testing(ergo_split)) %>% 
-    bind_cols(testing(ergo_split)) %>%
-    metrics(power, .pred)
+  predict(testing(ergo_split)) %>% 
+  bind_cols(testing(ergo_split)) %>%
+  metrics(power, .pred) %>% 
+  filter(.metric == 'rsq')
 ```
 
+The model accounts for 96% of the variation in the test set, which again we would say is pretty good. 
+
 # Inference
+
+We have our model, what is our estimate for \\(\alpha\\)?
 
 ```{r}
 tidy(ergo_model)
 ```
+
 
 So if our formula is $P = \alpha v^3$, then $\alpha = 0.0232$, and thus:
 

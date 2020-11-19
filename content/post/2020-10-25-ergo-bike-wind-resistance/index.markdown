@@ -150,7 +150,7 @@ ergo_data %>%
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#ocsluqsbsc .gt_table {
+#nvjywwzafc .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -175,7 +175,7 @@ ergo_data %>%
   border-left-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_heading {
+#nvjywwzafc .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -187,7 +187,7 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_title {
+#nvjywwzafc .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -197,7 +197,7 @@ ergo_data %>%
   border-bottom-width: 0;
 }
 
-#ocsluqsbsc .gt_subtitle {
+#nvjywwzafc .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -207,13 +207,13 @@ ergo_data %>%
   border-top-width: 0;
 }
 
-#ocsluqsbsc .gt_bottom_border {
+#nvjywwzafc .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_col_headings {
+#nvjywwzafc .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -228,7 +228,7 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_col_heading {
+#nvjywwzafc .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -248,7 +248,7 @@ ergo_data %>%
   overflow-x: hidden;
 }
 
-#ocsluqsbsc .gt_column_spanner_outer {
+#nvjywwzafc .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -260,15 +260,15 @@ ergo_data %>%
   padding-right: 4px;
 }
 
-#ocsluqsbsc .gt_column_spanner_outer:first-child {
+#nvjywwzafc .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ocsluqsbsc .gt_column_spanner_outer:last-child {
+#nvjywwzafc .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ocsluqsbsc .gt_column_spanner {
+#nvjywwzafc .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -280,7 +280,7 @@ ergo_data %>%
   width: 100%;
 }
 
-#ocsluqsbsc .gt_group_heading {
+#nvjywwzafc .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -302,7 +302,7 @@ ergo_data %>%
   vertical-align: middle;
 }
 
-#ocsluqsbsc .gt_empty_group_heading {
+#nvjywwzafc .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -317,15 +317,15 @@ ergo_data %>%
   vertical-align: middle;
 }
 
-#ocsluqsbsc .gt_from_md > :first-child {
+#nvjywwzafc .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ocsluqsbsc .gt_from_md > :last-child {
+#nvjywwzafc .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ocsluqsbsc .gt_row {
+#nvjywwzafc .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -344,7 +344,7 @@ ergo_data %>%
   overflow-x: hidden;
 }
 
-#ocsluqsbsc .gt_stub {
+#nvjywwzafc .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -356,7 +356,7 @@ ergo_data %>%
   padding-left: 12px;
 }
 
-#ocsluqsbsc .gt_summary_row {
+#nvjywwzafc .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -366,7 +366,7 @@ ergo_data %>%
   padding-right: 5px;
 }
 
-#ocsluqsbsc .gt_first_summary_row {
+#nvjywwzafc .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -376,7 +376,7 @@ ergo_data %>%
   border-top-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_grand_summary_row {
+#nvjywwzafc .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -386,7 +386,7 @@ ergo_data %>%
   padding-right: 5px;
 }
 
-#ocsluqsbsc .gt_first_grand_summary_row {
+#nvjywwzafc .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -396,11 +396,11 @@ ergo_data %>%
   border-top-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_striped {
+#nvjywwzafc .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ocsluqsbsc .gt_table_body {
+#nvjywwzafc .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -409,7 +409,7 @@ ergo_data %>%
   border-bottom-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_footnotes {
+#nvjywwzafc .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -423,13 +423,13 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_footnote {
+#nvjywwzafc .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#ocsluqsbsc .gt_sourcenotes {
+#nvjywwzafc .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -443,46 +443,46 @@ ergo_data %>%
   border-right-color: #D3D3D3;
 }
 
-#ocsluqsbsc .gt_sourcenote {
+#nvjywwzafc .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#ocsluqsbsc .gt_left {
+#nvjywwzafc .gt_left {
   text-align: left;
 }
 
-#ocsluqsbsc .gt_center {
+#nvjywwzafc .gt_center {
   text-align: center;
 }
 
-#ocsluqsbsc .gt_right {
+#nvjywwzafc .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ocsluqsbsc .gt_font_normal {
+#nvjywwzafc .gt_font_normal {
   font-weight: normal;
 }
 
-#ocsluqsbsc .gt_font_bold {
+#nvjywwzafc .gt_font_bold {
   font-weight: bold;
 }
 
-#ocsluqsbsc .gt_font_italic {
+#nvjywwzafc .gt_font_italic {
   font-style: italic;
 }
 
-#ocsluqsbsc .gt_super {
+#nvjywwzafc .gt_super {
   font-size: 65%;
 }
 
-#ocsluqsbsc .gt_footnote_marks {
+#nvjywwzafc .gt_footnote_marks {
   font-style: italic;
   font-size: 65%;
 }
 </style>
-<div id="ocsluqsbsc" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<div id="nvjywwzafc" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
   
   <thead class="gt_col_headings">
     <tr>
@@ -569,7 +569,7 @@ We've got the data in and tidied it, let's move on to trying to answer the quest
 
 There are many different kinds of analysis that we can perform on data. Sometimes it's *exploratory* analysis, trying to discover connections between the different variables in the data. Other times it's *inferential* analysis, using a sample of data to make inferences about the population at large. Or it could be *predictive* analysis, using historical data to make predictions about the future.
 
-In this instance we're performing *mechanistic* analysis: we already know there's a relationship between our cadence and power, and we have an equation. What we want are the parameters for this equation.
+In this instance we're performing *mechanistic* analysis: we already know there's a relationship between our cadence and power, and we have the equation. What we want are the parameters for this equation.
 
 So with the over-confidence of someone who did first year physics at university, we jump into Wikipedia and find the equation that confirms our assumptions: the drag equation.
 
@@ -587,23 +587,24 @@ Some of you have probably seen the mistake I've made here. It's akin to not read
 
 # Velocity Conversion
 
-As it currently stands, our 'velocity' is in RPM. We could stick with this, but things might be easier if we move to metres per second.
+As it currently stands, our 'velocity' is in RPM. We could stick with this, but things will be easier if we move to metres per second.
 
-The ergo has four sets of gears and two chains: a `\(46 \to 14\)`, passing through to a `\(46 \to 17\)`. We multiply the gear ratios together to calculate the RPM of the wheel: 
+The ergo has four gears and two chains: a \\(46 \to 14\\), passing through to a \\(46 \to 17\\). We multiply the gear ratios together to calculate the RPM of the wheel. Let \\(c_w\\) and \\(c_p\\) be the cadence of the wheel and pedals: 
 
-$$ RPM_w = \bigg(\frac{46}{14} \times \frac{46}{17}\bigg)RPM_p \\
+$$ 
+c_w = \bigg(\frac{46}{14} \times \frac{46}{17}\bigg)c_p \\
 
-= 8.89RPM_p
+= 8.89C_p
 $$
 So for every pedal revolution, the wheel will rotate 8.89 times.
 
-We'll use the outside of the wheel for our calculations. The distance from the hub to the wheel is .325 metres, making the circumference `\(2 \times \pi \times .325 = 2.04\)`.
+We'll use the outside of the wheel for our calculations. The distance from the hub to the wheel is .325 metres, making the circumference \\(2 \times \pi \times .325 = 2.04\\).
 
 Putting this all together, i
 
 $$ 
-v_w = \frac{2.04 \times 8.89 \times RPM_p }{60} \\
-\sim \frac{3}{10}RPM_p
+v_w = \frac{2.04 \times 8.89 \times C_p }{60} \\
+\sim \frac{3}{10}C_p
 $$
 
 Let's convert the cadence to velocity:
@@ -715,6 +716,8 @@ ergo_filtered %>%
 
 <img src="index_files/figure-html/unnamed-chunk-10-1.png" width="672" />
 
+That's reasonably bell shaped and unbiased in each direction. Thinking I've solved the problem, I graph the quadratic fit again, but am disappointed that it's essentially the same as before. Playing around I fit a cubic and this is the result:
+
 
 ```r
 ergo_filtered_split <- initial_split(ergo_filtered)
@@ -735,8 +738,28 @@ training(ergo_filtered_split) %>%
 
 <img src="index_files/figure-html/unnamed-chunk-11-1.png" width="672" />
 
+The relationship is cubic?! Going back to the Wikipedia page I scroll down a few lines to find:
+
+$$ P = \frac{1}{2} \rho v^3 A C_d $$
+The mistake I'd made previously is not paying proper attention to the left hand side of the equation, assuming the relationship would be the same for power and force. But of course:
+
+- Power is work over time
+- Work is force times distance, and
+- Velocity is distance over time
+
+$$ 
+P = W/t \\
+W = Fd \\
+P = Fd/t \\
+P = Fv
+$$
+Multiplying the \\(v\\) through the other side changes our \\(v^2\\) to a \\(v^3\\).
+
+Now that I've come to my senses and we've got the proper relationship, let's model the relationship:
 
 # Modelling
+
+We create a model using the training data and look at the \\(R^2\\) metric:
 
 
 ```r
@@ -746,16 +769,20 @@ ergo_model <-
     set_engine('lm') %>% 
     fit(power ~ I(velocity^3), data = training(ergo_filtered_split))
 
-glance(ergo_model)
+glance(ergo_model) %>%
+  select(r.squared, adj.r.squared)
 ```
 
 ```
-## # A tibble: 1 x 12
-##   r.squared adj.r.squared sigma statistic p.value    df  logLik    AIC    BIC
-##       <dbl>         <dbl> <dbl>     <dbl>   <dbl> <dbl>   <dbl>  <dbl>  <dbl>
-## 1     0.988         0.988  8.81  4078011.       0     1 -1.82e5 3.64e5 3.64e5
-## # … with 3 more variables: deviance <dbl>, df.residual <int>, nobs <int>
+## # A tibble: 1 x 2
+##   r.squared adj.r.squared
+##       <dbl>         <dbl>
+## 1     0.988         0.988
 ```
+The model accounts for 98.78% of the variation in the training data, which is great. Although we would be rightly concerned if the \\(R^2\\) wasn't in the high 90s.
+
+What about the residuals?
+
 
 ```r
 ergo_model %>% 
@@ -772,24 +799,31 @@ ergo_model %>%
 
 <img src="index_files/figure-html/unnamed-chunk-13-1.png" width="672" />
 
+This also looks pretty good. There's a an interesting hard cut-off at lower power levels, and some oscillation in the variance, but there's reasonable consistency in the variance across the fitted values. We're not going to worry about confidence intervals as part of this article, so looking at these residuals is most out of interest.
+
+Finally we run the model agaisnt the test data:
+
 
 ```r
 ergo_model %>% 
-    predict(testing(ergo_split)) %>% 
-    bind_cols(testing(ergo_split)) %>%
-    metrics(power, .pred)
+  predict(testing(ergo_split)) %>% 
+  bind_cols(testing(ergo_split)) %>%
+  metrics(power, .pred) %>% 
+  filter(.metric == 'rsq')
 ```
 
 ```
-## # A tibble: 3 x 3
+## # A tibble: 1 x 3
 ##   .metric .estimator .estimate
 ##   <chr>   <chr>          <dbl>
-## 1 rmse    standard      14.8  
-## 2 rsq     standard       0.971
-## 3 mae     standard       7.61
+## 1 rsq     standard       0.970
 ```
 
+The model accounts for 96% of the variation in the test set, which again we would say is pretty good. 
+
 # Inference
+
+We have our model, what is our estimate for \\(\alpha\\)?
 
 
 ```r
@@ -800,9 +834,10 @@ tidy(ergo_model)
 ## # A tibble: 2 x 5
 ##   term          estimate std.error statistic   p.value
 ##   <chr>            <dbl>     <dbl>     <dbl>     <dbl>
-## 1 (Intercept)    -2.77   0.111         -25.0 7.93e-137
-## 2 I(velocity^3)   0.0233 0.0000115    2019.  0.
+## 1 (Intercept)    -2.67   0.110         -24.3 2.36e-129
+## 2 I(velocity^3)   0.0233 0.0000115    2028.  0.
 ```
+
 
 So if our formula is `\(P = \alpha v^3\)`, then `\(\alpha = 0.0232\)`, and thus:
 
