@@ -6,6 +6,8 @@ slug: []
 categories: [C BGP Networking]
 ---
 
+**Update:** [This article was discussed on Hackernews](https://news.ycombinator.com/item?id=42233565)
+
 Much has been written and a lot of analysis performed on the global BGP table over the years, a significant portion by the inimitable [Geoff Huston](https://bgp.potaroo.net/). However this often focuses on is long term trends, like the growth of the routing table or the adoption of IPv6 , dealing with time frames of of months or years.
 
 I was more interested in what was happening in the short term: what does it look like on the front line for those poor routers connected to the churning, foamy chaos of the interenet, trying their best to adhere to [Postel’s Law](https://en.wikipedia.org/wiki/Robustness_principle)? What we’ll look at in this article is “a day in the life of the global BGP table”, exploring the intra-day shenanigans with an eye to finding some of the ridiculous things that go on out.
