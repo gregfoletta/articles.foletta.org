@@ -1,5 +1,5 @@
 ---
-title: 'Bytesize: A Ode to Rs Scraping'
+title: 'Bytesize: A Love Letter to Webscraping with R'
 author: ''
 date: '2025-03-3'
 categories: [R Scraping]
@@ -12,6 +12,7 @@ library(httr2)
 library(rvest)
 library(V8)
 library(janitor)
+library(gt)
 
 knitr::opts_chunk$set(
     comment = ''
@@ -32,7 +33,8 @@ request('http://theage.com.au') |>
     html_text() |>
     tibble(.name_repair = ~c('headline')) |>
     filter(headline != "") |>
-    slice_head(n = 10)
+    slice_head(n = 10) |>
+    gt()
 ```
 
 There we go, five lines of R and you've got the headlines, plus a couple more to get it into a nicer structure. Why is it so easy? I think it comes down to two things: number one is R's pipe operator which means you don't have to pepper your code with temporary variables. Second is R's vectorisation, which means you don't need to worry about any loops.
@@ -70,6 +72,8 @@ From there we can get the variable we need, and we're done.
 
 ```{r js_get}
 jscontext$get('sessions_NMRKeilor') |>
-    as_tibble() 
+    as_tibble() |> 
+    clean_names() |> 
+    gt()
 ```
-
+Fantastic. 
