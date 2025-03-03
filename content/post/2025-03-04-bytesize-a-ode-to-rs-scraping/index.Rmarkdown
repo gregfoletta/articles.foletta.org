@@ -61,7 +61,7 @@ js_content <-
 
 The mind initially goes to dark places: can I solve this with a regex? Pausing for a second, I think "this is just JavaScript, is there a way I can simply evaluate it?". A quick seach shows that there's an R library that provides API access into Google's V8 JavaScript implementation, allowing us to evalusate the code we received:
 
-```{r js_context_eval, include=FALSE}
+```{r js_context_eval, echo=TRUE, results = 'hide'}
 jscontext <- v8()
 jscontext$eval(js_content)
 ```

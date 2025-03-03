@@ -1,7 +1,7 @@
 ---
 title: 'Bytesize: A Ode to Rs Scraping'
 author: ''
-date: '2025-03-03'
+date: '2025-03-3'
 categories: [R Scraping]
 ---
 
@@ -35,7 +35,7 @@ request('http://theage.com.au') |>
  3 Thank God it’s Monday newsletter                                             
  4 This radical move will keep kids safer during the school run – but it’s unpo…
  5 The missing links in Melbourne’s traffic nightmare – and how to fix them     
- 6 Coalition would end ‘unsustainable’ work from home for public servants       
+ 6 PM slams Coalition’s ‘lazy’ work-from-home ban as Trump imitation; Election …
  7 ‘It’s gonna cost me’: Home owner says he had no choice but to ‘illegally’ bu…
  8 It’s clear that Trump is an agent of Putin. All US allies should be alarmed  
  9 Plan to cram classrooms in schools to keep up with population demands        
@@ -70,6 +70,10 @@ js_content <-
 The mind initially goes to dark places: can I solve this with a regex? Pausing for a second, I think "this is just JavaScript, is there a way I can simply evaluate it?". A quick seach shows that there's an R library that provides API access into Google's V8 JavaScript implementation, allowing us to evalusate the code we received:
 
 
+``` r
+jscontext <- v8()
+jscontext$eval(js_content)
+```
 
 From there we can get the variable we need, and we're done.
 
