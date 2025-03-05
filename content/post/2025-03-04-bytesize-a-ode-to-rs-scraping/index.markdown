@@ -5,11 +5,11 @@ date: '2025-03-03'
 categories: [R Scraping]
 ---
 
-Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem (more on that later). Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a ‘byte-size’ ode to this dependable
+Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem (more on that later). Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a ‘byte-size’ ode to this dependable friend.
 
 # Beauty and Terseness
 
-I’ll get to the challenge I ran into shortly, but first we’ll take a look at how the elegance of standard web-scraping is in R. Suppose you want to get all the headlines from The Age’s website. You look at the source and see that all the `<a>` tags have an attribute *data-testid* equal to *article-link*. Here’s the pipeline that acheives this:
+I’ll get to the challenge I ran into shortly, but first we’ll take a look at what basic web scraping looks like. Suppose you want to get all the headlines from The Age’s website. You look at the source and see that all the `<a>` tags have an attribute *data-testid* equal to *article-link*. Here’s the pipeline that acheives this:
 
 ``` r
 request('http://theage.com.au') |>
@@ -23,20 +23,20 @@ request('http://theage.com.au') |>
     gt()
 ```
 
-<div id="kfnkvuokpp" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#kfnkvuokpp table {
+<div id="zpyqsswiby" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#zpyqsswiby table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#kfnkvuokpp thead, #kfnkvuokpp tbody, #kfnkvuokpp tfoot, #kfnkvuokpp tr, #kfnkvuokpp td, #kfnkvuokpp th {
+&#10;#zpyqsswiby thead, #zpyqsswiby tbody, #zpyqsswiby tfoot, #zpyqsswiby tr, #zpyqsswiby td, #zpyqsswiby th {
   border-style: none;
 }
-&#10;#kfnkvuokpp p {
+&#10;#zpyqsswiby p {
   margin: 0;
   padding: 0;
 }
-&#10;#kfnkvuokpp .gt_table {
+&#10;#zpyqsswiby .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -61,11 +61,11 @@ request('http://theage.com.au') |>
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_caption {
+&#10;#zpyqsswiby .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#kfnkvuokpp .gt_title {
+&#10;#zpyqsswiby .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -76,7 +76,7 @@ request('http://theage.com.au') |>
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#kfnkvuokpp .gt_subtitle {
+&#10;#zpyqsswiby .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -87,7 +87,7 @@ request('http://theage.com.au') |>
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#kfnkvuokpp .gt_heading {
+&#10;#zpyqsswiby .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -98,12 +98,12 @@ request('http://theage.com.au') |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_bottom_border {
+&#10;#zpyqsswiby .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_col_headings {
+&#10;#zpyqsswiby .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -117,7 +117,7 @@ request('http://theage.com.au') |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_col_heading {
+&#10;#zpyqsswiby .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -136,7 +136,7 @@ request('http://theage.com.au') |>
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#kfnkvuokpp .gt_column_spanner_outer {
+&#10;#zpyqsswiby .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -147,13 +147,13 @@ request('http://theage.com.au') |>
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#kfnkvuokpp .gt_column_spanner_outer:first-child {
+&#10;#zpyqsswiby .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#kfnkvuokpp .gt_column_spanner_outer:last-child {
+&#10;#zpyqsswiby .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#kfnkvuokpp .gt_column_spanner {
+&#10;#zpyqsswiby .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -164,10 +164,10 @@ request('http://theage.com.au') |>
   display: inline-block;
   width: 100%;
 }
-&#10;#kfnkvuokpp .gt_spanner_row {
+&#10;#zpyqsswiby .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#kfnkvuokpp .gt_group_heading {
+&#10;#zpyqsswiby .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -192,7 +192,7 @@ request('http://theage.com.au') |>
   vertical-align: middle;
   text-align: left;
 }
-&#10;#kfnkvuokpp .gt_empty_group_heading {
+&#10;#zpyqsswiby .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -206,13 +206,13 @@ request('http://theage.com.au') |>
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#kfnkvuokpp .gt_from_md > :first-child {
+&#10;#zpyqsswiby .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#kfnkvuokpp .gt_from_md > :last-child {
+&#10;#zpyqsswiby .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#kfnkvuokpp .gt_row {
+&#10;#zpyqsswiby .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -230,7 +230,7 @@ request('http://theage.com.au') |>
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#kfnkvuokpp .gt_stub {
+&#10;#zpyqsswiby .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -242,7 +242,7 @@ request('http://theage.com.au') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#kfnkvuokpp .gt_stub_row_group {
+&#10;#zpyqsswiby .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -255,13 +255,13 @@ request('http://theage.com.au') |>
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#kfnkvuokpp .gt_row_group_first td {
+&#10;#zpyqsswiby .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#kfnkvuokpp .gt_row_group_first th {
+&#10;#zpyqsswiby .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#kfnkvuokpp .gt_summary_row {
+&#10;#zpyqsswiby .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -270,14 +270,14 @@ request('http://theage.com.au') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#kfnkvuokpp .gt_first_summary_row {
+&#10;#zpyqsswiby .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_first_summary_row.thick {
+&#10;#zpyqsswiby .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#kfnkvuokpp .gt_last_summary_row {
+&#10;#zpyqsswiby .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -286,7 +286,7 @@ request('http://theage.com.au') |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_grand_summary_row {
+&#10;#zpyqsswiby .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -295,7 +295,7 @@ request('http://theage.com.au') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#kfnkvuokpp .gt_first_grand_summary_row {
+&#10;#zpyqsswiby .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -304,7 +304,7 @@ request('http://theage.com.au') |>
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_last_grand_summary_row_top {
+&#10;#zpyqsswiby .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -313,10 +313,10 @@ request('http://theage.com.au') |>
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_striped {
+&#10;#zpyqsswiby .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#kfnkvuokpp .gt_table_body {
+&#10;#zpyqsswiby .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -324,7 +324,7 @@ request('http://theage.com.au') |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_footnotes {
+&#10;#zpyqsswiby .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -337,7 +337,7 @@ request('http://theage.com.au') |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_footnote {
+&#10;#zpyqsswiby .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -345,7 +345,7 @@ request('http://theage.com.au') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#kfnkvuokpp .gt_sourcenotes {
+&#10;#zpyqsswiby .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -358,64 +358,64 @@ request('http://theage.com.au') |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#kfnkvuokpp .gt_sourcenote {
+&#10;#zpyqsswiby .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#kfnkvuokpp .gt_left {
+&#10;#zpyqsswiby .gt_left {
   text-align: left;
 }
-&#10;#kfnkvuokpp .gt_center {
+&#10;#zpyqsswiby .gt_center {
   text-align: center;
 }
-&#10;#kfnkvuokpp .gt_right {
+&#10;#zpyqsswiby .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#kfnkvuokpp .gt_font_normal {
+&#10;#zpyqsswiby .gt_font_normal {
   font-weight: normal;
 }
-&#10;#kfnkvuokpp .gt_font_bold {
+&#10;#zpyqsswiby .gt_font_bold {
   font-weight: bold;
 }
-&#10;#kfnkvuokpp .gt_font_italic {
+&#10;#zpyqsswiby .gt_font_italic {
   font-style: italic;
 }
-&#10;#kfnkvuokpp .gt_super {
+&#10;#zpyqsswiby .gt_super {
   font-size: 65%;
 }
-&#10;#kfnkvuokpp .gt_footnote_marks {
+&#10;#zpyqsswiby .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#kfnkvuokpp .gt_asterisk {
+&#10;#zpyqsswiby .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#kfnkvuokpp .gt_indent_1 {
+&#10;#zpyqsswiby .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#kfnkvuokpp .gt_indent_2 {
+&#10;#zpyqsswiby .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#kfnkvuokpp .gt_indent_3 {
+&#10;#zpyqsswiby .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#kfnkvuokpp .gt_indent_4 {
+&#10;#zpyqsswiby .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#kfnkvuokpp .gt_indent_5 {
+&#10;#zpyqsswiby .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#kfnkvuokpp .katex-display {
+&#10;#zpyqsswiby .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#kfnkvuokpp div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#zpyqsswiby div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -430,22 +430,22 @@ request('http://theage.com.au') |>
     <tr><td headers="headline" class="gt_row gt_left">Get 2-for-1 Comedy Festival tickets*</td></tr>
     <tr><td headers="headline" class="gt_row gt_left">The Morning Edition podcast</td></tr>
     <tr><td headers="headline" class="gt_row gt_left">The 100 most expensive Melbourne public schools revealed</td></tr>
-    <tr><td headers="headline" class="gt_row gt_left">$4b on a new station in Melbourne’s west - has Victoria lost its budgetary mind?</td></tr>
-    <tr><td headers="headline" class="gt_row gt_left">Teals set to seize balance of power in sink-or-swim election</td></tr>
-    <tr><td headers="headline" class="gt_row gt_left">Men reckon they do their fair share of housework. Their female partners disagree</td></tr>
-    <tr><td headers="headline" class="gt_row gt_left">Labor tips $1.1 billion into pothole-ridden freeway</td></tr>
-    <tr><td headers="headline" class="gt_row gt_left">The Australians getting richer more quickly than any other group in society</td></tr>
+    <tr><td headers="headline" class="gt_row gt_left">$4b on a new station in Melbourne’s west – has Victoria lost its budgetary mind?</td></tr>
+    <tr><td headers="headline" class="gt_row gt_left">Daily atrocities spew out of the Oval Office. It’s still not enough to lure Australian voters back to the known</td></tr>
+    <tr><td headers="headline" class="gt_row gt_left">Trump administration upends US foreign policy, holds secret talks with Hamas</td></tr>
+    <tr><td headers="headline" class="gt_row gt_left">Trump’s speech was full of wild claims. Here are seven that weren’t true</td></tr>
+    <tr><td headers="headline" class="gt_row gt_left">US lands new blow on Ukraine after Oval Office stoush</td></tr>
     <tr><td headers="headline" class="gt_row gt_left">The number one reason why people are leaving Melbourne</td></tr>
   </tbody>
   &#10;  
 </table>
 </div>
 
-There we go, five lines of R and you’ve got the headlines, plus a couple more to get it into a nicer structure. What makes it good? I think it comes down to two things: number one is R’s pipe operator which means you don’t have to pepper your code with temporary variables. Second is R’s vectorisation, which means you don’t need to worry about any loops. I also tip my hat to the relatively new [httr2](https://httr2.r-lib.org/) package which makes web requests fit much better into a pipeline.
+There we go, five lines of R and you’ve got the headlines, plus a couple more to get it into a nicer structure. What makes it so simple? I think it comes down to two things: number one is R’s pipe operator, which menas you don’t have to pepper your code with temporary variables. Second is R’s vectorisation, which means you don’t need to worry about any loops. I also tip my hat to the relatively new [httr2](https://httr2.r-lib.org/) package which makes web requests fit much better into a pipeline.
 
 # The Challenge
 
-The challenge I ran into yesterday was that, while the data I needed was structured, it wasn’t in HTML, XML, or even JSON, it was actually JavaScript. Here’s an abridged sample of what was returned in an API call:
+The challenge I ran into last week was that, while the data I needed was structured, it wasn’t in HTML, XML, or even JSON, it was actually JavaScript. Here’s an abridged sample of what was returned in one of the API calls:
 
 ``` json
 sessions_NMRKeilor = [
@@ -472,27 +472,27 @@ jscontext <- v8()
 jscontext$eval(js_content)
 ```
 
-From there I can get the variable I need, and the library converts this from JSON to a nice, data frame:
+From there I can get the variable I need, and the library converts this from JSON to a clean data frame:
 
 ``` r
 jscontext$get('sessions_NMRKeilor') |>
     gt()
 ```
 
-<div id="bkrdlztzqz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#bkrdlztzqz table {
+<div id="siumjblpqx" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#siumjblpqx table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#bkrdlztzqz thead, #bkrdlztzqz tbody, #bkrdlztzqz tfoot, #bkrdlztzqz tr, #bkrdlztzqz td, #bkrdlztzqz th {
+&#10;#siumjblpqx thead, #siumjblpqx tbody, #siumjblpqx tfoot, #siumjblpqx tr, #siumjblpqx td, #siumjblpqx th {
   border-style: none;
 }
-&#10;#bkrdlztzqz p {
+&#10;#siumjblpqx p {
   margin: 0;
   padding: 0;
 }
-&#10;#bkrdlztzqz .gt_table {
+&#10;#siumjblpqx .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -517,11 +517,11 @@ jscontext$get('sessions_NMRKeilor') |>
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_caption {
+&#10;#siumjblpqx .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#bkrdlztzqz .gt_title {
+&#10;#siumjblpqx .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -532,7 +532,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#bkrdlztzqz .gt_subtitle {
+&#10;#siumjblpqx .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -543,7 +543,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#bkrdlztzqz .gt_heading {
+&#10;#siumjblpqx .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -554,12 +554,12 @@ jscontext$get('sessions_NMRKeilor') |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_bottom_border {
+&#10;#siumjblpqx .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_col_headings {
+&#10;#siumjblpqx .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -573,7 +573,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_col_heading {
+&#10;#siumjblpqx .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -592,7 +592,7 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#bkrdlztzqz .gt_column_spanner_outer {
+&#10;#siumjblpqx .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -603,13 +603,13 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#bkrdlztzqz .gt_column_spanner_outer:first-child {
+&#10;#siumjblpqx .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#bkrdlztzqz .gt_column_spanner_outer:last-child {
+&#10;#siumjblpqx .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#bkrdlztzqz .gt_column_spanner {
+&#10;#siumjblpqx .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -620,10 +620,10 @@ jscontext$get('sessions_NMRKeilor') |>
   display: inline-block;
   width: 100%;
 }
-&#10;#bkrdlztzqz .gt_spanner_row {
+&#10;#siumjblpqx .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#bkrdlztzqz .gt_group_heading {
+&#10;#siumjblpqx .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -648,7 +648,7 @@ jscontext$get('sessions_NMRKeilor') |>
   vertical-align: middle;
   text-align: left;
 }
-&#10;#bkrdlztzqz .gt_empty_group_heading {
+&#10;#siumjblpqx .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -662,13 +662,13 @@ jscontext$get('sessions_NMRKeilor') |>
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#bkrdlztzqz .gt_from_md > :first-child {
+&#10;#siumjblpqx .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#bkrdlztzqz .gt_from_md > :last-child {
+&#10;#siumjblpqx .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#bkrdlztzqz .gt_row {
+&#10;#siumjblpqx .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -686,7 +686,7 @@ jscontext$get('sessions_NMRKeilor') |>
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#bkrdlztzqz .gt_stub {
+&#10;#siumjblpqx .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -698,7 +698,7 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#bkrdlztzqz .gt_stub_row_group {
+&#10;#siumjblpqx .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -711,13 +711,13 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#bkrdlztzqz .gt_row_group_first td {
+&#10;#siumjblpqx .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#bkrdlztzqz .gt_row_group_first th {
+&#10;#siumjblpqx .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#bkrdlztzqz .gt_summary_row {
+&#10;#siumjblpqx .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -726,14 +726,14 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#bkrdlztzqz .gt_first_summary_row {
+&#10;#siumjblpqx .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_first_summary_row.thick {
+&#10;#siumjblpqx .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#bkrdlztzqz .gt_last_summary_row {
+&#10;#siumjblpqx .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -742,7 +742,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_grand_summary_row {
+&#10;#siumjblpqx .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -751,7 +751,7 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#bkrdlztzqz .gt_first_grand_summary_row {
+&#10;#siumjblpqx .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -760,7 +760,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_last_grand_summary_row_top {
+&#10;#siumjblpqx .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -769,10 +769,10 @@ jscontext$get('sessions_NMRKeilor') |>
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_striped {
+&#10;#siumjblpqx .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#bkrdlztzqz .gt_table_body {
+&#10;#siumjblpqx .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -780,7 +780,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_footnotes {
+&#10;#siumjblpqx .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -793,7 +793,7 @@ jscontext$get('sessions_NMRKeilor') |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_footnote {
+&#10;#siumjblpqx .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -801,7 +801,7 @@ jscontext$get('sessions_NMRKeilor') |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#bkrdlztzqz .gt_sourcenotes {
+&#10;#siumjblpqx .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -814,64 +814,64 @@ jscontext$get('sessions_NMRKeilor') |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#bkrdlztzqz .gt_sourcenote {
+&#10;#siumjblpqx .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#bkrdlztzqz .gt_left {
+&#10;#siumjblpqx .gt_left {
   text-align: left;
 }
-&#10;#bkrdlztzqz .gt_center {
+&#10;#siumjblpqx .gt_center {
   text-align: center;
 }
-&#10;#bkrdlztzqz .gt_right {
+&#10;#siumjblpqx .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#bkrdlztzqz .gt_font_normal {
+&#10;#siumjblpqx .gt_font_normal {
   font-weight: normal;
 }
-&#10;#bkrdlztzqz .gt_font_bold {
+&#10;#siumjblpqx .gt_font_bold {
   font-weight: bold;
 }
-&#10;#bkrdlztzqz .gt_font_italic {
+&#10;#siumjblpqx .gt_font_italic {
   font-style: italic;
 }
-&#10;#bkrdlztzqz .gt_super {
+&#10;#siumjblpqx .gt_super {
   font-size: 65%;
 }
-&#10;#bkrdlztzqz .gt_footnote_marks {
+&#10;#siumjblpqx .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#bkrdlztzqz .gt_asterisk {
+&#10;#siumjblpqx .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#bkrdlztzqz .gt_indent_1 {
+&#10;#siumjblpqx .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#bkrdlztzqz .gt_indent_2 {
+&#10;#siumjblpqx .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#bkrdlztzqz .gt_indent_3 {
+&#10;#siumjblpqx .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#bkrdlztzqz .gt_indent_4 {
+&#10;#siumjblpqx .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#bkrdlztzqz .gt_indent_5 {
+&#10;#siumjblpqx .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#bkrdlztzqz .katex-display {
+&#10;#siumjblpqx .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#bkrdlztzqz div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#siumjblpqx div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>

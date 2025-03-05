@@ -19,11 +19,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem (more on that later). Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a 'byte-size' ode to this dependable  
+Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem (more on that later). Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a 'byte-size' ode to this dependable friend.
 
 # Beauty and Terseness
 
-I'll get to the challenge I ran into shortly, but first we'll take a look at how the elegance of standard web-scraping is in R. Suppose you want to get all the headlines from The Age's website. You look at the source and see that all the `<a>` tags have an attribute *data-testid* equal to *article-link*. Here's the pipeline that acheives this:
+I'll get to the challenge I ran into shortly, but first we'll take a look at what basic web scraping looks like. Suppose you want to get all the headlines from The Age's website. You look at the source and see that all the `<a>` tags have an attribute *data-testid* equal to *article-link*. Here's the pipeline that acheives this:
 
 ```{r base_request}
 request('http://theage.com.au') |>
@@ -37,11 +37,11 @@ request('http://theage.com.au') |>
     gt()
 ```
 
-There we go, five lines of R and you've got the headlines, plus a couple more to get it into a nicer structure. What makes it good? I think it comes down to two things: number one is R's pipe operator which means you don't have to pepper your code with temporary variables. Second is R's vectorisation, which means you don't need to worry about any loops. I also tip my hat to the relatively new [httr2](https://httr2.r-lib.org/) package which makes web requests fit much better into a pipeline.
+There we go, five lines of R and you've got the headlines, plus a couple more to get it into a nicer structure. What makes it so simple? I think it comes down to two things: number one is R's pipe operator, which menas you don't have to pepper your code with temporary variables. Second is R's vectorisation, which means you don't need to worry about any loops. I also tip my hat to the relatively new [httr2](https://httr2.r-lib.org/) package which makes web requests fit much better into a pipeline.
 
 # The Challenge
 
-The challenge I ran into yesterday was that, while the data I needed was structured, it wasn't in HTML, XML, or even JSON, it was actually JavaScript. Here's an abridged sample of what was returned in an API call:
+The challenge I ran into last week was that, while the data I needed was structured, it wasn't in HTML, XML, or even JSON, it was actually JavaScript. Here's an abridged sample of what was returned in one of the API calls:
 
 ```json
 sessions_NMRKeilor = [
@@ -68,7 +68,7 @@ jscontext <- v8()
 jscontext$eval(js_content)
 ```
 
-From there I can get the variable I need, and the library converts this from JSON to a nice, data frame:
+From there I can get the variable I need, and the library converts this from JSON to a clean data frame:
 
 ```{r js_get}
 jscontext$get('sessions_NMRKeilor') |>
