@@ -5,7 +5,7 @@ date: '2025-03-03'
 categories: [R Scraping]
 ---
 
-Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem (more on that later). Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a ‘byte-size’ ode to this dependable friend.
+Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem. Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a ‘byte-size’ ode to this dependable friend.
 
 # Beauty and Terseness
 
