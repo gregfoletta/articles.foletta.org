@@ -1,7 +1,7 @@
 ---
-title: 'Bytesize: A Love Letter to Webscraping with R'
+title: 'Byte-size: An Ode to Web Scraping with R'
 author: ''
-date: '2025-03-3'
+date: '2025-03-03'
 categories: [R Scraping]
 ---
 
@@ -19,11 +19,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-I was recently doing some websscraping, building out a data pipeline to generate the end-of-season awards for Little Athletics. I ran into a problem, and as always, R comes to the rescue with a simple, elegant solution. I thought I'd write a little byte-sized ode to web-scraping with R.
+Last week I needed to pull some data from a website. I was building out a data pipeline to generate the end-of-season awards for Little Athletics, but I ran into a problem (more on that later). Like dependable friend, R came to the rescue with a simple, elegant solution. This post is a 'byte-size' ode to this dependable  
 
 # Beauty and Terseness
 
-I'll get to the challenge I ran into shortly, but before that let's take a look at what standard web-scraping scenario looks like, and how easy is is to do in R. Suppose you want to get all the headlines from The Age's website. You look at the source and see that they have an attribute *data-testid* equal to *article-link*. Here's the pipeline that acheives this:
+I'll get to the challenge I ran into shortly, but first we'll take a look at how the elegance of standard web-scraping is in R. Suppose you want to get all the headlines from The Age's website. You look at the source and see that all the `<a>` tags have an attribute *data-testid* equal to *article-link*. Here's the pipeline that acheives this:
 
 ```{r base_request}
 request('http://theage.com.au') |>
@@ -37,11 +37,11 @@ request('http://theage.com.au') |>
     gt()
 ```
 
-There we go, five lines of R and you've got the headlines, plus a couple more to get it into a nicer structure. Why is it so easy? I think it comes down to two things: number one is R's pipe operator which means you don't have to pepper your code with temporary variables. Second is R's vectorisation, which means you don't need to worry about any loops.
+There we go, five lines of R and you've got the headlines, plus a couple more to get it into a nicer structure. What makes it good? I think it comes down to two things: number one is R's pipe operator which means you don't have to pepper your code with temporary variables. Second is R's vectorisation, which means you don't need to worry about any loops. I also tip my hat to the relatively new [httr2](https://httr2.r-lib.org/) package which makes web requests fit much better into a pipeline.
 
 # The Challenge
 
-The challenge I ran into yesterday was that, while the data I needed was structured, it wasn't in HTML, XML, or even JSON, it was actually JavaScript. Here's an sample of what was returned in an API call:
+The challenge I ran into yesterday was that, while the data I needed was structured, it wasn't in HTML, XML, or even JSON, it was actually JavaScript. Here's an abridged sample of what was returned in an API call:
 
 ```json
 sessions_NMRKeilor = [
@@ -52,7 +52,7 @@ sessions_NMRKeilor = [
 ]
 ```
 
-Not sure what to do, I go and fetch thed data:
+Not sure what to do, I fetch the data:
 
 ```{r js_content}
 js_content <-
@@ -61,19 +61,18 @@ js_content <-
     resp_body_string()
 ```
 
-The mind initially goes to dark places: can I solve this with a regex? Pausing for a second, I think "this is just JavaScript, is there a way I can simply evaluate it?". A quick seach shows that there's an R library that provides API access into Google's V8 JavaScript implementation, allowing us to evalusate the code we received:
+The mind initially goes to dark places: can I solve this with a regex? Maybe filter out the variable assignment portions and parse as JSON? Pulling myself together, I think "this is just JavaScript, is there a way I can simply evaluate it?". Some research shows that there's an R library that provides API access into Google's V8 JavaScript implementation. This should allow me to evaluate the JavaScript code we received:
 
 ```{r js_context_eval, echo=TRUE, results = 'hide'}
 jscontext <- v8()
 jscontext$eval(js_content)
 ```
 
-From there we can get the variable we need, and we're done.
+From there I can get the variable I need, and the library converts this from JSON to a nice, data frame:
 
 ```{r js_get}
 jscontext$get('sessions_NMRKeilor') |>
-    as_tibble() |> 
-    clean_names() |> 
     gt()
 ```
-Fantastic. 
+
+That's it: web request to JavaScript evaluation to structured R data in a few lines; a thing of beauty.
