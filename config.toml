@@ -1,6 +1,6 @@
 baseurl = "https://articles.foletta.org"
 title = "Greg Foletta - Bits and Blobs"
-copyright = "Copyright 2024 - Greg Foletta"
+copyright = "Copyright 2025 - Greg Foletta"
 canonifyurls = true
 theme = "hugo-kiera"
 
