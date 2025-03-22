@@ -13,9 +13,57 @@ images: []
 ```{r include=FALSE}
 library(tidyverse)
 library(httr2)
+library(janitor)
+library(glue)
 ```
 
+# Weather Station List
 
+```{r}
+weather_stations_raw <-
+    request('http://www.bom.gov.au/climate/data/lists_by_element/stations.txt') |>
+    req_user_agent('Mozilla') |>
+    req_perform() |>
+    resp_body_string() |>
+    slice_head(n = -6) 
+```
+
+```{r}
+weather_stations <-
+    weather_stations_raw |> 
+    read_fwf(skip = 3, show_col_types = FALSE) |>  
+    rename(
+        site = X1, dist = X2, site_name = X3, start = X4,
+        end = X5, lat = X6, lon = X7, source = X8,
+        state = X9, height = X10, bar_ht = X11, wmo = X12
+    )
+    
+```
+
+```{r}
+nearest_location <- function(lat, lon) {
+    loc_html <-
+        glue('http://www.bom.gov.au/places/search/?q={lat},{lon}&suggest=1') |>
+        request() |>
+        req_user_agent('Mozilla') |>
+        req_perform() |>
+        resp_body_html()
+    
+    tibble(
+        location = html_element(loc_html, 'a') |> html_text(),
+        path = html_element(loc_html, 'a') |> html_attr('href'),
+        loc_lat = html_element(loc_html, 'li') |> html_attr('data-lat'),
+        loc_lon = html_element(loc_html, 'li') |> html_attr('data-lon')
+    )
+}
+```
+
+```{r}
+weather_stations_location <-
+    weather_stations |>
+    mutate(nearest_location = map2(lat, lon, ~nearest_location(.x, .y))) |>
+    unnest(nearest_location)
+```
 
 
 ```{r read_in_data, include=FALSE}
