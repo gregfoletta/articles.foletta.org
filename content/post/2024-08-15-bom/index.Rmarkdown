@@ -13,22 +13,84 @@ images: []
 ```{r include=FALSE}
 library(tidyverse)
 library(httr2)
+library(rvest)
 library(janitor)
 library(glue)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(tictoc)
+library(here)
 ```
 
-# Weather Station List
+```{r}
+temp_data <-
+    list.files('temp_data', recursive = TRUE, pattern = '*.csv', full.names = TRUE) |>
+    read_csv(show_col_types = FALSE) |>
+    rename(
+        request_datetime_utc = request_date,
+        temp_time_local = current_temp_time,
+        temperature = current_temp
+    ) |> 
+    mutate(request_datetime_utc_floored = floor_date(request_datetime_utc, '10 minutes')) |>
+    distinct(wmo, request_datetime_utc_floored, .keep_all = TRUE) |>
+    separate(location, into = c('city', 'state'), sep = ', ')
+
+
+# Calculating the current temp time's date, as it isn't on the page. 
+# Find the the time when the reuest_datetime is UTC 00:00:00, which is 
+# by definition the timezone, then add this on to the request datetime
+wmo_timezones <-
+    temp_data |>
+    filter(
+        hour(request_datetime_utc_floored) == 0 &
+        minute(request_datetime_utc_floored) == 0 &
+        second(request_datetime_utc_floored) == 0
+    ) |>
+    #### FIXME: Daylight Savings Change ####
+    group_by(wmo) |>
+    slice_head(n = 1) |>
+    ungroup() |>
+    select(wmo, timezone = temp_time_local)
+
+temp_data <-
+    temp_data |>
+    left_join(wmo_timezones, by = 'wmo') |>
+    mutate(
+        request_datetime_local_floored = request_datetime_utc_floored + timezone,
+        temp_datetime_local = as_datetime(date(request_datetime_utc_floored + timezone)) + temp_time_local) |>
+        select(request_datetime_utc, request_datetime_utc_floored, request_datetime_local_floored, temp_datetime_local, temp_time_local, everything())
+
+weather_stations <- read_csv('weather_stations_current_data.csv', show_col_types = FALSE)
+```
+
 
 ```{r}
+# Load the forecast, current temp, and station data
+forecast_data <-
+    list.files('forecast_data', recursive = TRUE, pattern = '*.csv', full.names = TRUE) |>
+    read_csv(show_col_types = FALSE) |> 
+    rename(
+        request_datetime_utc = request_datetime,
+        forecast_datetime_local = forecast_datetime
+    ) |> 
+    mutate(
+        request_datetime_utc_floored = floor_date(request_datetime_utc, '10 minutes')
+    ) |>
+    select(contains('datetime'), everything())
+```
+```{r}
+```
+
+
+
+
+```{r weather_stations, eval=FALSE, include=FALSE}
 weather_stations_raw <-
     request('http://www.bom.gov.au/climate/data/lists_by_element/stations.txt') |>
     req_user_agent('Mozilla') |>
     req_perform() |>
-    resp_body_string() |>
-    slice_head(n = -6) 
-```
+    resp_body_string() 
 
-```{r}
 weather_stations <-
     weather_stations_raw |> 
     read_fwf(skip = 3, show_col_types = FALSE) |>  
@@ -36,177 +98,79 @@ weather_stations <-
         site = X1, dist = X2, site_name = X3, start = X4,
         end = X5, lat = X6, lon = X7, source = X8,
         state = X9, height = X10, bar_ht = X11, wmo = X12
-    )
-    
-```
+    ) |>
+    slice_head(n = -6) 
 
-```{r}
-nearest_location <- function(lat, lon) {
-    loc_html <-
-        glue('http://www.bom.gov.au/places/search/?q={lat},{lon}&suggest=1') |>
-        request() |>
-        req_user_agent('Mozilla') |>
-        req_perform() |>
-        resp_body_html()
-    
-    tibble(
-        location = html_element(loc_html, 'a') |> html_text(),
-        path = html_element(loc_html, 'a') |> html_attr('href'),
-        loc_lat = html_element(loc_html, 'li') |> html_attr('data-lat'),
-        loc_lon = html_element(loc_html, 'li') |> html_attr('data-lon')
-    )
+nearest_location <- function(loc_html) {
+        tibble(
+            location = html_element(loc_html, 'a') |> html_text(),
+            path = html_element(loc_html, 'a') |> html_attr('href'),
+            loc_lat = html_element(loc_html, 'li') |> html_attr('data-lat'),
+            loc_lon = html_element(loc_html, 'li') |> html_attr('data-lon')
+        )
 }
-```
 
-```{r}
 weather_stations_location <-
     weather_stations |>
-    mutate(nearest_location = map2(lat, lon, ~nearest_location(.x, .y))) |>
+    slice_tail(n = -1) |> 
+    filter(wmo != '..') |> 
+    mutate(reqs = map2(lat, lon, ~{ glue('http://www.bom.gov.au/places/search/?q={.x},{.y}&suggest=1') |> request() |> req_user_agent('Mozilla') })) |>
+    mutate(nearest_location = req_perform_parallel(reqs) |> resps_successes() |> resps_data(resp_data = \(resp)(list(nearest_location(resp_body_html(resp)))))) |>
+    select(-reqs) |> 
     unnest(nearest_location)
 ```
 
+# Weather Stations
 
-```{r read_in_data, include=FALSE}
-current_temps <- request("sftp://hastings/~/bom_data/current_temps.csv") |>
-    req_perform() |>
-    resp_body_raw() |>
-    read_csv() |>
-    # Change timezone from UTC
-    mutate(
-        request_time = with_tz(request_time, "Australia/Melbourne"),
-        floor_request_time = floor_date(request_time, '5 mins')
-    ) 
+```{r}
+aus <- ne_countries(returnclass = "sf", scale = 'medium', country = 'Australia')
+aus |>
+    ggplot() +
+    geom_sf() +
+    geom_point(data = weather_stations, aes(x = lon, y = lat), size = .4) +
+    labs(
+        x = '',
+        y = ''
+    )
 ```
+
+# Temperature and Forecasts Data
 
 ```{r include=FALSE}
-forecast_temps <- request("sftp://hastings/~/bom_data/forecast_temps.csv") |>
-    req_perform() |>
-    resp_body_raw() |>
-    read_csv() |> 
-    # Change timezone from UTC
-    mutate(
-        request_time = with_tz(request_time, "Australia/Melbourne"),
-        forecast_time = force_tz(forecast_time, "Australia/Melbourne"),
-        floor_request_time = floor_date(request_time, '5 mins')
-    )
-```
-
-```{r current_temps}
-current_temps |>
-    ggplot(aes(request_time, current_temp, colour = location)) +
-    geom_line() +
-    facet_grid(vars(location))
-```
-
-```{r forecast_temps}
-forecast_temps |> 
-    ggplot(aes(forecast_time, forecast_temp, colour = location)) +
-    geom_line() +
-    facet_grid(vars(location))
-```
-# Model Changes
-
-```{r}
-forecast_temps |>
-    arrange(location, forecast_time, request_time) |> 
-    group_by(forecast_time, location) |>
-    mutate(model_change = forecast_temp != lag(forecast_temp)) |>
-     ungroup() |>
-    mutate(time_difference = forecast_time - request_time) |>
-    filter(time_difference > 0 & model_change) |>  
+temp_data |>
     ggplot() +
-    geom_histogram(aes(time_difference, fill = location), binwidth = 60 * 60 * 3) +
-    facet_grid(vars(location))
+    geom_point(aes(request_datetime_utc_floored, temperature, colour = state), size = .1, alpha = .1) +
+    guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1)))
 ```
-
-
-
 ```{r}
-forecast_current_joined <-
-    forecast_temps |>
-    # Join on location, and whe forecast time matches the 5 minute floored 
-    # request time of the current observation
-    left_join(
-        current_temps, by = c('forecast_time' = 'floor_request_time', 'location'),
-        relationship = 'many-to-many',
-        suffix = c('_forecast', '_current')
+temp_data |>
+    group_by(station_id) |>
+    summarise(
+        mean_temp = mean(temperature, na.rm = TRUE)
     ) |>
-    # Drop rows that are in the future and for which we don't have a current temp yet
-    drop_na(current_temp) |> 
-    mutate(
-        time_difference = forecast_time - floor_request_time,
-        temp_difference = current_temp - forecast_temp
-    ) |> 
-    # Filter out "past forecasts"
-    filter(time_difference > 0) |>
-    select(forecast_time, location, request_time_current, time_difference, forecast_temp, current_temp, temp_difference, everything()) |>
-    arrange(desc(forecast_time))
-```
-
-
-# Looking
-
-```{r}
-forecast_current_joined |>
-        filter(time_difference > days(6)) |> ni
+    ungroup() |>
+    (\(x)
+        bind_rows(
+            slice_min(x, n = 1, mean_temp),
+            slice_max(x, n = 1, mean_temp)
+        )
+    )() |>
+    left_join(temp_data, by = 'station_id') |>
     ggplot() +
-    geom_line(aes(forecast_time, current_temp), alpha = .3) +
-    geom_point(aes(forecast_time, current_temp), alpha = .3) +
-    geom_line(aes(forecast_time, forecast_temp, color = '5 minute forecast')) +
-    geom_point(aes(forecast_time, forecast_temp, color = '5 minute forecast')) +
-    facet_grid(vars(location))
-```
-
-```{r}
-forecast_current_joined |>
-    filter(time_difference == hours(12)) |>
-    ggplot() +
-    geom_hline(aes(yintercept = 0), size = .3) +
-    geom_line(aes(forecast_time, temp_difference, colour = location)) +
-    geom_point(aes(forecast_time, temp_difference, colour = location)) +
-    facet_grid(vars(location))
-```
-```{r}
-forecast_current_joined |>
-    filter(time_difference == days(1)) |>
-    ggplot() +
-    geom_histogram(aes(temp_difference, fill = location), binwidth = .1) +
-    geom_vline(aes(xintercept = 0), size = .3)  +
-    facet_grid(vars(location))
-```
-
-```{r}
-forecast_current_joined |>
-    filter(time_difference == days(5)) |>
-    ggplot() +
-    geom_line(aes(forecast_time, forecast_temp, color = '7 day forecast')) +
-    geom_line(aes(forecast_time, current_temp, colour = location)) +
-    facet_grid(vars(location))
-```
-
-
-
-```{r}
-forecast_current_joined |>
-    filter(time_difference == days(5)) |>
-    ggplot() +
-    geom_line(aes(forecast_time, temp_difference, colour = location)) +
-    facet_grid(vars(location))
-```
-
-
-
-```{r}
-forecast_current_joined |>
-    ggplot() +
-    geom_point(aes(time_difference, temp_difference, colour = location), size = .1, alpha = .02) +
-    facet_grid(vars(location)) +
-    scale_x_continuous() +
-    guides(color = guide_legend(override.aes = list(size = 3, alpha = 1))) +
+    geom_point(aes(request_datetime_utc_floored, temperature, colour = paste(city, state, sep = ', ')), size = .5) +
     labs(
-        colour = "Location",
-        x = "Time To Forecast (Seconds)",
-        y = "Temperature Difference (C)"
-    )
+        colour = 'City, State',
+        x = 'Date/Time',
+        y = 'Temperature'
+    )  +
+    guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1)))
 ```
 
+
+# Forecast Accuracy
+
+```{r}
+forecast_temp_data <- 
+    forecast_data |>
+    left_join(temp_data, by = c('wmo', 'forecast_datetime_local' = 'request_datetime_local_floored'), relationship = 'many-to-one') 
+```
