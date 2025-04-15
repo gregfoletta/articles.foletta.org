@@ -23,6 +23,7 @@ library(here)
 ```
 
 ```{r}
+# Load the current temperature data
 temp_data <-
     list.files('temp_data', recursive = TRUE, pattern = '*.csv', full.names = TRUE) |>
     read_csv(show_col_types = FALSE) |>
@@ -31,8 +32,9 @@ temp_data <-
         temp_time_local = current_temp_time,
         temperature = current_temp
     ) |> 
+    # Create a 10 minute floored time
     mutate(request_datetime_utc_floored = floor_date(request_datetime_utc, '10 minutes')) |>
-    distinct(wmo, request_datetime_utc_floored, .keep_all = TRUE) |>
+    # Remove any duplicate entries
     separate(location, into = c('city', 'state'), sep = ', ')
 
 
@@ -52,36 +54,41 @@ wmo_timezones <-
     ungroup() |>
     select(wmo, timezone = temp_time_local)
 
+# Use the timezone to calculate the time of the temperature
+# in the local time of the weather station
 temp_data <-
     temp_data |>
     left_join(wmo_timezones, by = 'wmo') |>
     mutate(
         request_datetime_local_floored = request_datetime_utc_floored + timezone,
         temp_datetime_local = as_datetime(date(request_datetime_utc_floored + timezone)) + temp_time_local) |>
-        select(request_datetime_utc, request_datetime_utc_floored, request_datetime_local_floored, temp_datetime_local, temp_time_local, everything())
+        select(request_datetime_utc, request_datetime_utc_floored, request_datetime_local_floored, temp_datetime_local, temp_time_local, everything()
+    ) |> 
+    distinct(wmo, temp_datetime_local, .keep_all = TRUE)
+```
 
+```{r}
+# Read in the weather station data
 weather_stations <- read_csv('weather_stations_current_data.csv', show_col_types = FALSE)
 ```
 
 
 ```{r}
-# Load the forecast, current temp, and station data
-forecast_data <-
+# Load the forecast data, join in the timezones and add in
+# a request time in the local time of the weather station
+    forecast_data <-
     list.files('forecast_data', recursive = TRUE, pattern = '*.csv', full.names = TRUE) |>
     read_csv(show_col_types = FALSE) |> 
+    left_join(wmo_timezones, by = 'wmo') |>
     rename(
         request_datetime_utc = request_datetime,
         forecast_datetime_local = forecast_datetime
     ) |> 
     mutate(
-        request_datetime_utc_floored = floor_date(request_datetime_utc, '10 minutes')
+        request_datetime_local_floored = floor_date(request_datetime_utc, '10 minutes') + timezone
     ) |>
-    select(contains('datetime'), everything())
+    select(request_datetime_local_floored, forecast_datetime_local, site, wmo, location, forecast_temp)
 ```
-```{r}
-```
-
-
 
 
 ```{r weather_stations, eval=FALSE, include=FALSE}
@@ -134,15 +141,18 @@ aus |>
     )
 ```
 
-# Temperature and Forecasts Data
+# Temperature Analysis
 
-```{r include=FALSE}
+```{r echo=FALSE}
 temp_data |>
     ggplot() +
     geom_point(aes(request_datetime_utc_floored, temperature, colour = state), size = .1, alpha = .1) +
     guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1)))
 ```
-```{r}
+
+```{r echo=FALSE}
+# Calculate the mean temperature per station ID, then slice the stations with
+# the highest and lowest mean temperature, then graph these
 temp_data |>
     group_by(station_id) |>
     summarise(
@@ -158,6 +168,7 @@ temp_data |>
     left_join(temp_data, by = 'station_id') |>
     ggplot() +
     geom_point(aes(request_datetime_utc_floored, temperature, colour = paste(city, state, sep = ', ')), size = .5) +
+    geom_hline(aes(yintercept = mean_temp, colour = paste(city, state, sep = ', '))) +
     labs(
         colour = 'City, State',
         x = 'Date/Time',
@@ -166,11 +177,87 @@ temp_data |>
     guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1)))
 ```
 
+# Forecasts
+
+```{r}
+```
 
 # Forecast Accuracy
 
 ```{r}
-forecast_temp_data <- 
-    forecast_data |>
-    left_join(temp_data, by = c('wmo', 'forecast_datetime_local' = 'request_datetime_local_floored'), relationship = 'many-to-one') 
+forecast_accuracy <- read_csv('temp_fc_accuracy.csv') |> filter(!is.na(temperature))
+#    forecast_data |>
+#    mutate(forecast_period = time_length(forecast_datetime_local - request_datetime_local_floored)) |>
+#    filter(forecast_period %in% c(86400*1:7)) |>
+#    left_join(temp_data |> select(temp_datetime_local, wmo, temperature), by = c('wmo', 'forecast_datetime_local' = 'temp_datetime_local'), relationship = 'many-to-one') |>
+#    mutate(
+#        temperature_rounded = round(temperature),
+#        temp_diff = forecast_temp - temperature,
+#        temp_diff_rounded = forecast_temp - temperature_rounded
+#    )
 ```
+
+```{r}
+forecast_accuracy |>
+    group_by(location) |>
+    nest() |>
+    ungroup() |>
+    slice_sample(n = 4) |>
+    unnest(data) |>
+    filter(forecast_period == 86400*1) |> 
+    ggplot() +
+    geom_point(aes(forecast_datetime_local, temperature_rounded), shape = 2) +
+    geom_line(aes(forecast_datetime_local, temperature_rounded)) +
+    geom_point(aes(forecast_datetime_local, forecast_temp, colour = location)) +
+    geom_line(aes(forecast_datetime_local, forecast_temp, colour = location)) +
+    facet_wrap(~location) +
+    labs(
+        colour = "Forecast Temp"
+    )
+```
+```{r}
+forecast_accuracy |>
+    ggplot() +
+    geom_histogram(aes(temp_diff, after_stat(density), fill = as_factor(forecast_period)), binwidth = .1) +
+    facet_wrap(vars(forecast_period))
+```
+
+
+```{r}
+forecast_accuracy |>
+    group_by(forecast_period) |>
+    summarise(
+        mean(temp_diff_rounded),
+        sd(temp_diff_rounded)
+
+            )
+```
+
+
+```{r}
+wmo_sd <-
+    forecast_accuracy |>
+    group_by(wmo) |>
+    summarise(sd = sd(temp_diff_rounded)) |>
+    right_join(weather_stations, by = 'wmo') |>  
+    select(wmo, lat, lon, site_name, sd)
+
+aus |> 
+ ggplot() +
+    geom_sf() +
+    geom_point(data = wmo_sd, aes(x = lon, y = lat, colour = sd), size = .4) +
+    labs(
+        x = '',
+        y = ''
+    )
+    
+```
+
+```{r}
+wmo_sd |>
+    slice_max(sd) |>
+    right_join(forecast_accuracy, by = 'wmo') |>
+    ggplot() +
+    geom_p
+```
+
