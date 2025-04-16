@@ -10,7 +10,7 @@ images: []
 
 
 
-```{r}
+```{r include=FALSE}
 library(tidyverse)
 library(httr2)
 ```
@@ -18,7 +18,7 @@ library(httr2)
 
 
 
-```{r read_in_data}
+```{r read_in_data, include=FALSE}
 current_temps <- request("sftp://hastings/~/bom_data/current_temps.csv") |>
     req_perform() |>
     resp_body_raw() |>
@@ -30,7 +30,7 @@ current_temps <- request("sftp://hastings/~/bom_data/current_temps.csv") |>
     ) 
 ```
 
-```{r}
+```{r include=FALSE}
 forecast_temps <- request("sftp://hastings/~/bom_data/forecast_temps.csv") |>
     req_perform() |>
     resp_body_raw() |>
@@ -46,13 +46,15 @@ forecast_temps <- request("sftp://hastings/~/bom_data/forecast_temps.csv") |>
 ```{r current_temps}
 current_temps |>
     ggplot(aes(request_time, current_temp, colour = location)) +
-    geom_line() 
+    geom_line() +
+    facet_grid(vars(location))
 ```
 
 ```{r forecast_temps}
 forecast_temps |> 
     ggplot(aes(forecast_time, forecast_temp, colour = location)) +
-    geom_line()
+    geom_line() +
+    facet_grid(vars(location))
 ```
 # Model Changes
 
@@ -60,14 +62,12 @@ forecast_temps |>
 forecast_temps |>
     arrange(location, forecast_time, request_time) |> 
     group_by(forecast_time, location) |>
-    mutate(
-        model_change = forecast_temp != lag(forecast_temp) 
-    ) |>
-    ungroup() |>
+    mutate(model_change = forecast_temp != lag(forecast_temp)) |>
+     ungroup() |>
     mutate(time_difference = forecast_time - request_time) |>
     filter(time_difference > 0 & model_change) |>  
     ggplot() +
-    geom_histogram(aes(time_difference, fill = location), binwidth = 60 * 60 * 2) +
+    geom_histogram(aes(time_difference, fill = location), binwidth = 60 * 60 * 3) +
     facet_grid(vars(location))
 ```
 
@@ -91,8 +91,7 @@ forecast_current_joined <-
     ) |> 
     # Filter out "past forecasts"
     filter(time_difference > 0) |>
-    # Clean up columns
-    select(forecast_time, location, request_time_current, time_difference, forecast_temp, current_temp, temp_difference) |>
+    select(forecast_time, location, request_time_current, time_difference, forecast_temp, current_temp, temp_difference, everything()) |>
     arrange(desc(forecast_time))
 ```
 
@@ -101,12 +100,12 @@ forecast_current_joined <-
 
 ```{r}
 forecast_current_joined |>
-    filter(time_difference == minutes(5)) |>
+        filter(time_difference > days(6)) |> ni
     ggplot() +
+    geom_line(aes(forecast_time, current_temp), alpha = .3) +
+    geom_point(aes(forecast_time, current_temp), alpha = .3) +
     geom_line(aes(forecast_time, forecast_temp, color = '5 minute forecast')) +
     geom_point(aes(forecast_time, forecast_temp, color = '5 minute forecast')) +
-    geom_line(aes(forecast_time, current_temp, colour = location)) +
-    geom_point(aes(forecast_time, current_temp, colour = location)) +
     facet_grid(vars(location))
 ```
 
@@ -121,10 +120,10 @@ forecast_current_joined |>
 ```
 ```{r}
 forecast_current_joined |>
-    filter(time_difference == minutes(5)) |>
+    filter(time_difference == days(1)) |>
     ggplot() +
     geom_histogram(aes(temp_difference, fill = location), binwidth = .1) +
-    geom_vline(aes(xintercept = 0), size = .3) +
+    geom_vline(aes(xintercept = 0), size = .3)  +
     facet_grid(vars(location))
 ```
 
