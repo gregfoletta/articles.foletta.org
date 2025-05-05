@@ -5,6 +5,9 @@ library(purrr)
 library(readr)
 library(here)
 library(glue)
+library(stringr)
+library(tidyr)
+library(rvest)
 
 
 
@@ -41,7 +44,7 @@ extract_from_response <- function(resp) {
         resp_body_html() |>
         html_element('.airT') |>
         html_text() |>
-        str_extract("\\d+(\\.\\d+)?") |>
+        str_extract("-?\\d+(\\.\\d+)?") |>
         as.double()
     
     current_temp_time <-
@@ -98,4 +101,5 @@ get_and_write_current_temp <- function(file) {
 }
 
 ##### Start Point
+print(here())
 get_and_write_current_temp(here('content', 'post', '2024-08-15-bom', 'weather_stations_current_data.csv')) -> foo
