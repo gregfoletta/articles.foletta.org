@@ -1,4 +1,5 @@
----
+--
+-
 title: BOM
 author: 'Greg Foletta'
 date: '2024-08-15'
@@ -8,6 +9,11 @@ tags: []
 images: []
 ---
 
+In this article I'm going to take a look at how accurate Australia's Bureau of Metorology (BOM) is at forcasting temperature. But before I start a quick note.
+
+I had trepidation writing this article, and it almost didn't get off the ground. All too often people wander into fields they have no foundational knowledge in, and armed with data and start to make bold statements and inferences. I'm not a meteorologist, and simply put I didn't want to be one of these people. But after having a chat with one of my great friends who has a Phd in meteorology, she assuaged my apprehension, and so here we are.
+
+THe premise of this article came about after talking to people about the weather, often with them complaining that the forecasts were bad. I didn't necessarily believe that and went looking for historical data on how the BOM has performed, but couldn't find any. So what we'll take a look at in this article is how well the BOM has done at forecasting the temperature from 1 to 7 days out.
 
 
 ```{r include=FALSE}
@@ -16,82 +22,39 @@ library(httr2)
 library(rvest)
 library(janitor)
 library(glue)
-library(rnaturalearth)
-library(rnaturalearthdata)
 library(tictoc)
 library(here)
+library(gt)
+
+
+library(rnaturalearth)
+library(rnaturalearthdata)
 ```
 
-```{r}
-# Load the current temperature data
-temp_data <-
-    list.files('temp_data', recursive = TRUE, pattern = '*.csv', full.names = TRUE) |>
-    read_csv(show_col_types = FALSE) |>
-    rename(
-        request_datetime_utc = request_date,
-        temp_time_local = current_temp_time,
-        temperature = current_temp
-    ) |> 
-    # Create a 10 minute floored time
-    mutate(request_datetime_utc_floored = floor_date(request_datetime_utc, '10 minutes')) |>
-    # Remove any duplicate entries
-    separate(location, into = c('city', 'state'), sep = ', ')
+# Weather Station, Forecast, and Temperature Data
+
+In previous articles I've gone into detail about how I got the data I'm working wth. This is probably because it's the most enjoyable part of the whole process. This time however I'm going to keep it brief and give you a quick overview about how I got the data, and what the data is.
+
+I needed three pieces of data:
+
+1. A list of BOM weather stations
+1. The temperature at those weather stations over a period of time
+1. The one to seven day forecast at those stations
 
 
-# Calculating the current temp time's date, as it isn't on the page. 
-# Find the the time when the reuest_datetime is UTC 00:00:00, which is 
-# by definition the timezone, then add this on to the request datetime
-wmo_timezones <-
-    temp_data |>
-    filter(
-        hour(request_datetime_utc_floored) == 0 &
-        minute(request_datetime_utc_floored) == 0 &
-        second(request_datetime_utc_floored) == 0
-    ) |>
-    #### FIXME: Daylight Savings Change ####
-    group_by(wmo) |>
-    slice_head(n = 1) |>
-    ungroup() |>
-    select(wmo, timezone = temp_time_local)
-
-# Use the timezone to calculate the time of the temperature
-# in the local time of the weather station
-temp_data <-
-    temp_data |>
-    left_join(wmo_timezones, by = 'wmo') |>
-    mutate(
-        request_datetime_local_floored = request_datetime_utc_floored + timezone,
-        temp_datetime_local = as_datetime(date(request_datetime_utc_floored + timezone)) + temp_time_local) |>
-        select(request_datetime_utc, request_datetime_utc_floored, request_datetime_local_floored, temp_datetime_local, temp_time_local, everything()
-    ) |> 
-    distinct(wmo, temp_datetime_local, .keep_all = TRUE)
-```
+Number one was easy, as the BOM provides a [list of weather stattions](http://www.bom.gov.au/climate/data/lists_by_element/stations.txt), including their name, latitude, longitude. A shout out here to the [read_fwf()](https://readr.tidyverse.org/reference/read_fwf.html) function which makes reading in this human-readble style text table easy. This list get's filtered down from ~6,500 total active weather stations to ~900 that have a world meteorological organisation ID. Here's a map of all of these weather stations around Australia:
 
 ```{r}
-# Read in the weather station data
+#source('temp_and_fcast_import.R', local = knitr::knit_global())
+#source('temp_and_fcast_import.R')
+temp_data <- readRDS('bom_temperature.Rdata') |> drop_na(temperature)
+forecast_distinct <- readRDS('bom_forecasts_distinct.Rdata')
+forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata')
+
 weather_stations <- read_csv('weather_stations_current_data.csv', show_col_types = FALSE)
 ```
-
-
-```{r}
-# Load the forecast data, join in the timezones and add in
-# a request time in the local time of the weather station
-    forecast_data <-
-    list.files('forecast_data', recursive = TRUE, pattern = '*.csv', full.names = TRUE) |>
-    read_csv(show_col_types = FALSE) |> 
-    left_join(wmo_timezones, by = 'wmo') |>
-    rename(
-        request_datetime_utc = request_datetime,
-        forecast_datetime_local = forecast_datetime
-    ) |> 
-    mutate(
-        request_datetime_local_floored = floor_date(request_datetime_utc, '10 minutes') + timezone
-    ) |>
-    select(request_datetime_local_floored, forecast_datetime_local, site, wmo, location, forecast_temp)
-```
-
-
 ```{r weather_stations, eval=FALSE, include=FALSE}
+# We keep this in here for posterity, but we get the weather station data in via csv that was generated from this.
 weather_stations_raw <-
     request('http://www.bom.gov.au/climate/data/lists_by_element/stations.txt') |>
     req_user_agent('Mozilla') |>
@@ -126,29 +89,59 @@ weather_stations_location <-
     select(-reqs) |> 
     unnest(nearest_location)
 ```
-
-# Weather Stations
-
 ```{r}
 aus <- ne_countries(returnclass = "sf", scale = 'medium', country = 'Australia')
 aus |>
     ggplot() +
     geom_sf() +
     geom_point(data = weather_stations, aes(x = lon, y = lat), size = .4) +
+    coord_sf(xlim = c(110, 155), ylim = -c(10, 45)) +
     labs(
         x = '',
         y = ''
     )
 ```
+For the temperature and forecast data, I wrote a script which reaches out and gets the temperature and the forecasts for the clostest city/town to each of the weather stations. I then wrapped this up in a systemd service and timer and ran it every ten minutes, which appeared to be the update interval for temperature on the BOM website.
 
-# Temperature Analysis
+After some post-processing and cleaning, including a bit of a nightmare with timezones and an annoying daylight savings change during the sampling, the actual temperatures and the forecast temperatures are joined together. I then calculate the forecast period, which is the time between the time of the request and the time of the forecast. Here's a sample of the first four observations of two of the sites we polled: 
+
+```{r echo=FALSE}
+set.seed(233433)
+forecast_lagged |>
+    group_by(wmo) |>
+    nest(.key = 'data') |>
+    ungroup() |> 
+    slice_sample(n = 2) |>
+    unnest(data) |>
+    group_by(city, state) |>
+    slice_head(n = 4) |>
+    select(request_datetime_local_floored, wmo, city, state, forecast_datetime_local, forecast_period, forecast_temp, temperature) |>
+    gt() |> 
+    cols_label(
+        request_datetime_local_floored = "Request Date/Time",
+        wmo = 'WMO ID',
+        forecast_datetime_local = 'Forecast Date/Time',
+        forecast_period = 'Forecast Period',
+        temperature = 'Recorded Temperature'
+    )
+    
+```
+
 
 ```{r echo=FALSE}
 temp_data |>
     ggplot() +
-    geom_point(aes(request_datetime_utc_floored, temperature, colour = state), size = .1, alpha = .1) +
-    guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1)))
+    geom_point(aes(request_datetime_local_floored, temperature, colour = state), size = .1, alpha = .5) +
+    guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
+    labs(
+        title = "Australian Weather Station - Temperature over Time",
+        x = 'Date/Time',
+        y = 'Temperature (°C)',
+        colour = 'State'
+    )
 ```
+That's a total of ~1.34 million temperature readings over twenty days, which doesn't make for the cleanest visualisation, but gives you a sense of the breadth of temperature difference in this vast country of mine. The elephant-sized gap in the middle is a period where my script stopped working, but as we're looking at point differences between forecasts and actual temperatures, this won't affect my results.
+
 
 ```{r echo=FALSE}
 # Calculate the mean temperature per station ID, then slice the stations with
@@ -180,72 +173,95 @@ temp_data |>
 # Forecasts
 
 ```{r}
+forecast_distinct |>
+    ggplot() +
+    geom_point(aes(request_datetime_local_floored, forecast_temp), size = .1) 
 ```
+
 
 # Forecast Accuracy
 
 ```{r}
-forecast_accuracy <- read_csv('temp_fc_accuracy.csv') |> filter(!is.na(temperature))
-#    forecast_data |>
-#    mutate(forecast_period = time_length(forecast_datetime_local - request_datetime_local_floored)) |>
-#    filter(forecast_period %in% c(86400*1:7)) |>
-#    left_join(temp_data |> select(temp_datetime_local, wmo, temperature), by = c('wmo', 'forecast_datetime_local' = 'temp_datetime_local'), relationship = 'many-to-one') |>
-#    mutate(
-#        temperature_rounded = round(temperature),
-#        temp_diff = forecast_temp - temperature,
-#        temp_diff_rounded = forecast_temp - temperature_rounded
-#    )
+forecast_lagged <-
+    forecast_lagged |> 
+    mutate(
+        temperature_rounded = round(temperature),
+        temp_diff = forecast_temp - temperature,
+        temp_diff_rounded = forecast_temp - temperature_rounded,
+        forecast_datetime_local = force_tz(forecast_datetime_local, tz = tz)
+    ) |>
+    mutate(location = glue("{city}, {state}")) |> 
+    drop_na()
 ```
 
 ```{r}
-forecast_accuracy |>
+set.seed(32151)
+forecast_lagged |>
     group_by(location) |>
-    nest() |>
-    ungroup() |>
+    nest(.key = 'data') |>
+    ungroup() |> 
     slice_sample(n = 4) |>
-    unnest(data) |>
-    filter(forecast_period == 86400*1) |> 
+    unnest(data) |> 
+    filter(forecast_period == days(1) * 7) |> 
     ggplot() +
-    geom_point(aes(forecast_datetime_local, temperature_rounded), shape = 2) +
-    geom_line(aes(forecast_datetime_local, temperature_rounded)) +
-    geom_point(aes(forecast_datetime_local, forecast_temp, colour = location)) +
-    geom_line(aes(forecast_datetime_local, forecast_temp, colour = location)) +
+    geom_point(aes(forecast_datetime_local, temperature_rounded), shape = 2, size = .4) +
+    #geom_line(aes(forecast_datetime_local, temperature_rounded)) +
+    geom_point(aes(forecast_datetime_local, forecast_temp, colour = location), alpha = .6, size = .4) +
+    geom_line(aes(forecast_datetime_local, forecast_temp, colour = location), alpha = .6) +
     facet_wrap(~location) +
     labs(
         colour = "Forecast Temp"
     )
 ```
+
 ```{r}
-forecast_accuracy |>
+forecast_lagged |>
+    group_by(forecast_period) |>
+    summarise(
+        mean_forecast_error = mean(temp_diff),
+        sd_forecast_error_round = sd(temp_diff)
+    ) |>
+    mutate(forecast_period = as.duration(forecast_period)) |> 
+    gt() |>
+    cols_label(
+        forecast_period = "Forecast Period",
+        mean_forecast_error = "Forecast Error Mean",
+        sd_forecast_error_round = "Forecast Error Standard Deviation"
+    )
+```
+
+```{r}
+forecast_lagged |>
     ggplot() +
-    geom_histogram(aes(temp_diff, after_stat(density), fill = as_factor(forecast_period)), binwidth = .1) +
+    geom_histogram(aes(temp_diff, after_stat(density), fill = as_factor(forecast_period)), binwidth = .2) +
+    facet_wrap(vars(forecast_period)) +
+    labs(
+        fill = "Forecast Period\n(seconds)"
+    )
+```
+```{r}
+forecast_lagged |>
+    ggplot(aes(sample = temp_diff, group = forecast_period)) +
+    geom_qq(size = .1, distribution = stats::qnorm) +
+    geom_qq_line(distribution = stats::qnorm) +
     facet_wrap(vars(forecast_period))
 ```
 
 
-```{r}
-forecast_accuracy |>
-    group_by(forecast_period) |>
-    summarise(
-        mean(temp_diff_rounded),
-        sd(temp_diff_rounded)
-
-            )
-```
 
 
 ```{r}
 wmo_sd <-
-    forecast_accuracy |>
-    group_by(wmo) |>
-    summarise(sd = sd(temp_diff_rounded)) |>
-    right_join(weather_stations, by = 'wmo') |>  
-    select(wmo, lat, lon, site_name, sd)
+    forecast_lagged |>
+    group_by(wmo, forecast_period) |>
+    summarise(forecast_accuracy_sd = sd(temp_diff), .groups = 'drop') |>
+    left_join(weather_stations, by = 'wmo')
+    
 
 aus |> 
  ggplot() +
-    geom_sf() +
-    geom_point(data = wmo_sd, aes(x = lon, y = lat, colour = sd), size = .4) +
+    # geom_sf() +
+    geom_point(data = wmo_sd |> filter(forecast_period == 518400), aes(x = lon, y = lat, colour = forecast_accuracy_sd), size = .4) +
     labs(
         x = '',
         y = ''
@@ -255,9 +271,35 @@ aus |>
 
 ```{r}
 wmo_sd |>
-    slice_max(sd) |>
-    right_join(forecast_accuracy, by = 'wmo') |>
+    filter(forecast_period == days(7)) |> 
     ggplot() +
-    geom_p
+    geom_point(aes(lat, forecast_accuracy_sd, colour = state))
 ```
+```{r}
+temp_data |>
+    group_by(wmo) |>
+    summarise(temp_var = var(temperature, na.rm = TRUE)) |>
+    left_join(wmo_sd, by = 'wmo') |>  
+    filter(forecast_period == 86400*6) |> 
+    ggplot() +
+    geom_point(aes(temp_var, forecast_accuracy_sd, colour = state))
+```
+# Best and Worse
+
+```{r}
+wmo_sd |>
+    filter(forecast_period == days(7)) |>
+    slice_max(forecast_accuracy_sd, n = 4) |>
+    left_join(forecast_lagged, by = c('wmo', 'forecast_period')) |> 
+    ggplot() +
+    geom_point(aes(forecast_datetime_local, temperature_rounded), shape = 2, size = .4) +
+    geom_line(aes(forecast_datetime_local, temperature_rounded), alpha = .3) +
+    geom_point(aes(forecast_datetime_local, forecast_temp, colour = location.x), alpha = .6, size = .4) +
+    geom_line(aes(forecast_datetime_local, forecast_temp, colour = location.x), alpha = .6) +
+    facet_wrap(~location.x) +
+    labs(
+        colour = "Forecast Temp"
+    )
+```
+
 
