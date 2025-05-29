@@ -1,8 +1,8 @@
 ---
-title: "They're the BOM: Assessing the Bureau's Forecast Accuracy"
-author: 'Greg Foletta'
-date: '2025-05-04'
-categories: [R Forecasting]
+title: “They’re the BOM: Assessing the Bureau’s Forecast Accuracy”
+author: ‘Greg Foletta’
+date: ‘2025-05-04’
+categories: \[R Forecasting\]
 ---
 
 In this article I’m going to take a look at how accurate Australia’s Bureau of Metorology (BOM) is at forcasting temperature. But before I start a quick note.
@@ -11,7 +11,7 @@ I had trepidation writing this article, and it almost didn’t get off the groun
 
 THe premise of this article came about after talking to people about the weather, often with them complaining that the forecasts were bad. I didn’t necessarily believe that and went looking for historical data on how the BOM has performed, but couldn’t find any. So what we’ll take a look at in this article is how well the BOM has done at forecasting the temperature from 1 to 7 days out.
 
-# Weather Station, Forecast, and Temperature Data
+# Weather Stations
 
 In previous articles I’ve gone into detail about how I got the data I’m working wth. This is probably because it’s the most enjoyable part of the whole process. This time however I’m going to keep it brief and give you a quick overview about how I got the data, and what the data is.
 
@@ -21,585 +21,62 @@ I needed three pieces of data:
 2.  The temperature at those weather stations over a period of time
 3.  The one to seven day forecast at those stations
 
-Number one was easy, as the BOM provides a [list of weather stattions](http://www.bom.gov.au/climate/data/lists_by_element/stations.txt), including their name, latitude, longitude. A shout out here to the [read_fwf()](https://readr.tidyverse.org/reference/read_fwf.html) function which makes reading in this human-readble style text table easy. This list get’s filtered down from ~6,500 total active weather stations to ~900 that have a world meteorological organisation ID. Here’s a map of all of these weather stations around Australia:
-
-``` r
-#source('temp_and_fcast_import.R', local = knitr::knit_global())
-#source('temp_and_fcast_import.R')
-temp_data <- readRDS('bom_temperature.Rdata') |> drop_na(temperature)
-forecast_distinct <- readRDS('bom_forecasts_distinct.Rdata')
-forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata')
-
-weather_stations <- read_csv('weather_stations_current_data.csv', show_col_types = FALSE)
-```
-
-``` r
-aus <- ne_countries(returnclass = "sf", scale = 'medium', country = 'Australia')
-aus |>
-    ggplot() +
-    geom_sf() +
-    geom_point(data = weather_stations, aes(x = lon, y = lat), size = .4) +
-    coord_sf(xlim = c(110, 155), ylim = -c(10, 45)) +
-    labs(
-        x = '',
-        y = ''
-    )
-```
+Number one was easy, as the BOM provides a [list of weather stattions](http://www.bom.gov.au/climate/data/lists_by_element/stations.txt), including their name, latitude, longitude. A shout out here to the [read_fwf()](https://readr.tidyverse.org/reference/read_fwf.html) function which makes reading in this human-readable style text table easy. This list get’s filtered down from ~6,500 total active weather stations to ~900 that have a world meteorological organisation ID. Here’s a map of all of these weather stations around Australia:
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" />
-For the temperature and forecast data, I wrote a script which reaches out and gets the temperature and the forecasts for the clostest city/town to each of the weather stations. I then wrapped this up in a systemd service and timer and ran it every ten minutes, which appeared to be the update interval for temperature on the BOM website.
+\# Temperature Data
 
-After some post-processing and cleaning, including a bit of a nightmare with timezones and an annoying daylight savings change during the sampling, the actual temperatures and the forecast temperatures are joined together. I then calculate the forecast period, which is the time between the time of the request and the time of the forecast. Here’s a sample of the first four observations of two of the sites we polled:
+To acquire the temperature and forecast data, I wrote a script which reaches out to the BOM and retrieves the temperature and the forecasts for the clostest city/town to each of the weather stations. This was wrapped up into a systemd service and timer and ran it every ten minutes, which appears to be the update interval for most temperature on the BOM website.
 
-<div id="nbndefjlrh" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#nbndefjlrh table {
-  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-&#10;#nbndefjlrh thead, #nbndefjlrh tbody, #nbndefjlrh tfoot, #nbndefjlrh tr, #nbndefjlrh td, #nbndefjlrh th {
-  border-style: none;
-}
-&#10;#nbndefjlrh p {
-  margin: 0;
-  padding: 0;
-}
-&#10;#nbndefjlrh .gt_table {
-  display: table;
-  border-collapse: collapse;
-  line-height: normal;
-  margin-left: auto;
-  margin-right: auto;
-  color: #333333;
-  font-size: 16px;
-  font-weight: normal;
-  font-style: normal;
-  background-color: #FFFFFF;
-  width: auto;
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #A8A8A8;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #A8A8A8;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_caption {
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-&#10;#nbndefjlrh .gt_title {
-  color: #333333;
-  font-size: 125%;
-  font-weight: initial;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-color: #FFFFFF;
-  border-bottom-width: 0;
-}
-&#10;#nbndefjlrh .gt_subtitle {
-  color: #333333;
-  font-size: 85%;
-  font-weight: initial;
-  padding-top: 3px;
-  padding-bottom: 5px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-color: #FFFFFF;
-  border-top-width: 0;
-}
-&#10;#nbndefjlrh .gt_heading {
-  background-color: #FFFFFF;
-  text-align: center;
-  border-bottom-color: #FFFFFF;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_bottom_border {
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_col_headings {
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_col_heading {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 6px;
-  padding-left: 5px;
-  padding-right: 5px;
-  overflow-x: hidden;
-}
-&#10;#nbndefjlrh .gt_column_spanner_outer {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 4px;
-  padding-right: 4px;
-}
-&#10;#nbndefjlrh .gt_column_spanner_outer:first-child {
-  padding-left: 0;
-}
-&#10;#nbndefjlrh .gt_column_spanner_outer:last-child {
-  padding-right: 0;
-}
-&#10;#nbndefjlrh .gt_column_spanner {
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  overflow-x: hidden;
-  display: inline-block;
-  width: 100%;
-}
-&#10;#nbndefjlrh .gt_spanner_row {
-  border-bottom-style: hidden;
-}
-&#10;#nbndefjlrh .gt_group_heading {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  text-align: left;
-}
-&#10;#nbndefjlrh .gt_empty_group_heading {
-  padding: 0.5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  vertical-align: middle;
-}
-&#10;#nbndefjlrh .gt_from_md > :first-child {
-  margin-top: 0;
-}
-&#10;#nbndefjlrh .gt_from_md > :last-child {
-  margin-bottom: 0;
-}
-&#10;#nbndefjlrh .gt_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  margin: 10px;
-  border-top-style: solid;
-  border-top-width: 1px;
-  border-top-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  overflow-x: hidden;
-}
-&#10;#nbndefjlrh .gt_stub {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-&#10;#nbndefjlrh .gt_stub_row_group {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  padding-left: 5px;
-  padding-right: 5px;
-  vertical-align: top;
-}
-&#10;#nbndefjlrh .gt_row_group_first td {
-  border-top-width: 2px;
-}
-&#10;#nbndefjlrh .gt_row_group_first th {
-  border-top-width: 2px;
-}
-&#10;#nbndefjlrh .gt_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-&#10;#nbndefjlrh .gt_first_summary_row {
-  border-top-style: solid;
-  border-top-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_first_summary_row.thick {
-  border-top-width: 2px;
-}
-&#10;#nbndefjlrh .gt_last_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_grand_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-&#10;#nbndefjlrh .gt_first_grand_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-style: double;
-  border-top-width: 6px;
-  border-top-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_last_grand_summary_row_top {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: double;
-  border-bottom-width: 6px;
-  border-bottom-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_striped {
-  background-color: rgba(128, 128, 128, 0.05);
-}
-&#10;#nbndefjlrh .gt_table_body {
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_footnotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_footnote {
-  margin: 0px;
-  font-size: 90%;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-&#10;#nbndefjlrh .gt_sourcenotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-}
-&#10;#nbndefjlrh .gt_sourcenote {
-  font-size: 90%;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-&#10;#nbndefjlrh .gt_left {
-  text-align: left;
-}
-&#10;#nbndefjlrh .gt_center {
-  text-align: center;
-}
-&#10;#nbndefjlrh .gt_right {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-&#10;#nbndefjlrh .gt_font_normal {
-  font-weight: normal;
-}
-&#10;#nbndefjlrh .gt_font_bold {
-  font-weight: bold;
-}
-&#10;#nbndefjlrh .gt_font_italic {
-  font-style: italic;
-}
-&#10;#nbndefjlrh .gt_super {
-  font-size: 65%;
-}
-&#10;#nbndefjlrh .gt_footnote_marks {
-  font-size: 75%;
-  vertical-align: 0.4em;
-  position: initial;
-}
-&#10;#nbndefjlrh .gt_asterisk {
-  font-size: 100%;
-  vertical-align: 0;
-}
-&#10;#nbndefjlrh .gt_indent_1 {
-  text-indent: 5px;
-}
-&#10;#nbndefjlrh .gt_indent_2 {
-  text-indent: 10px;
-}
-&#10;#nbndefjlrh .gt_indent_3 {
-  text-indent: 15px;
-}
-&#10;#nbndefjlrh .gt_indent_4 {
-  text-indent: 20px;
-}
-&#10;#nbndefjlrh .gt_indent_5 {
-  text-indent: 25px;
-}
-&#10;#nbndefjlrh .katex-display {
-  display: inline-flex !important;
-  margin-bottom: 0.75em !important;
-}
-&#10;#nbndefjlrh div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
-  height: 0px !important;
-}
-</style>
-<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
-  <thead>
-    <tr class="gt_col_headings">
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="request_datetime_local_floored">Request Date/Time</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="wmo">WMO ID</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="forecast_datetime_local">Forecast Date/Time</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="forecast_period">Forecast Period</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="forecast_temp">forecast_temp</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="temperature">Recorded Temperature</th>
-    </tr>
-  </thead>
-  <tbody class="gt_table_body">
-    <tr class="gt_group_heading_row">
-      <th colspan="6" class="gt_group_heading" scope="colgroup" id="Avalon - VIC">Avalon - VIC</th>
-    </tr>
-    <tr class="gt_row_group_first"><td headers="Avalon - VIC  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 12:00:00</td>
-<td headers="Avalon - VIC  wmo" class="gt_row gt_right">94854</td>
-<td headers="Avalon - VIC  forecast_datetime_local" class="gt_row gt_right">2025-04-06 04:00:00</td>
-<td headers="Avalon - VIC  forecast_period" class="gt_row gt_right">518400</td>
-<td headers="Avalon - VIC  forecast_temp" class="gt_row gt_right">10</td>
-<td headers="Avalon - VIC  temperature" class="gt_row gt_right">9.0</td></tr>
-    <tr><td headers="Avalon - VIC  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 13:00:00</td>
-<td headers="Avalon - VIC  wmo" class="gt_row gt_right">94854</td>
-<td headers="Avalon - VIC  forecast_datetime_local" class="gt_row gt_right">2025-04-01 05:00:00</td>
-<td headers="Avalon - VIC  forecast_period" class="gt_row gt_right">86400</td>
-<td headers="Avalon - VIC  forecast_temp" class="gt_row gt_right">13</td>
-<td headers="Avalon - VIC  temperature" class="gt_row gt_right">NA</td></tr>
-    <tr><td headers="Avalon - VIC  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 13:00:00</td>
-<td headers="Avalon - VIC  wmo" class="gt_row gt_right">94854</td>
-<td headers="Avalon - VIC  forecast_datetime_local" class="gt_row gt_right">2025-04-02 05:00:00</td>
-<td headers="Avalon - VIC  forecast_period" class="gt_row gt_right">172800</td>
-<td headers="Avalon - VIC  forecast_temp" class="gt_row gt_right">12</td>
-<td headers="Avalon - VIC  temperature" class="gt_row gt_right">10.6</td></tr>
-    <tr><td headers="Avalon - VIC  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 13:00:00</td>
-<td headers="Avalon - VIC  wmo" class="gt_row gt_right">94854</td>
-<td headers="Avalon - VIC  forecast_datetime_local" class="gt_row gt_right">2025-04-03 05:00:00</td>
-<td headers="Avalon - VIC  forecast_period" class="gt_row gt_right">259200</td>
-<td headers="Avalon - VIC  forecast_temp" class="gt_row gt_right">12</td>
-<td headers="Avalon - VIC  temperature" class="gt_row gt_right">10.9</td></tr>
-    <tr class="gt_group_heading_row">
-      <th colspan="6" class="gt_group_heading" scope="colgroup" id="St George - QLD">St George - QLD</th>
-    </tr>
-    <tr class="gt_row_group_first"><td headers="St George - QLD  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 12:00:00</td>
-<td headers="St George - QLD  wmo" class="gt_row gt_right">94517</td>
-<td headers="St George - QLD  forecast_datetime_local" class="gt_row gt_right">2025-04-01 04:00:00</td>
-<td headers="St George - QLD  forecast_period" class="gt_row gt_right">86400</td>
-<td headers="St George - QLD  forecast_temp" class="gt_row gt_right">18</td>
-<td headers="St George - QLD  temperature" class="gt_row gt_right">NA</td></tr>
-    <tr><td headers="St George - QLD  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 12:00:00</td>
-<td headers="St George - QLD  wmo" class="gt_row gt_right">94517</td>
-<td headers="St George - QLD  forecast_datetime_local" class="gt_row gt_right">2025-04-02 04:00:00</td>
-<td headers="St George - QLD  forecast_period" class="gt_row gt_right">172800</td>
-<td headers="St George - QLD  forecast_temp" class="gt_row gt_right">19</td>
-<td headers="St George - QLD  temperature" class="gt_row gt_right">20.5</td></tr>
-    <tr><td headers="St George - QLD  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 12:00:00</td>
-<td headers="St George - QLD  wmo" class="gt_row gt_right">94517</td>
-<td headers="St George - QLD  forecast_datetime_local" class="gt_row gt_right">2025-04-03 04:00:00</td>
-<td headers="St George - QLD  forecast_period" class="gt_row gt_right">259200</td>
-<td headers="St George - QLD  forecast_temp" class="gt_row gt_right">17</td>
-<td headers="St George - QLD  temperature" class="gt_row gt_right">18.5</td></tr>
-    <tr><td headers="St George - QLD  request_datetime_local_floored" class="gt_row gt_right">2025-03-31 12:00:00</td>
-<td headers="St George - QLD  wmo" class="gt_row gt_right">94517</td>
-<td headers="St George - QLD  forecast_datetime_local" class="gt_row gt_right">2025-04-04 04:00:00</td>
-<td headers="St George - QLD  forecast_period" class="gt_row gt_right">345600</td>
-<td headers="St George - QLD  forecast_temp" class="gt_row gt_right">15</td>
-<td headers="St George - QLD  temperature" class="gt_row gt_right">15.3</td></tr>
-  </tbody>
-  &#10;  
-</table>
-</div>
+After some post-processing and cleaning, including a bit of a nightmare with timezones and an annoying daylight savings change during the sampling, the actual temperatures and the forecast temperatures are joined together. I then calculate the forecast period, which is the time between the time of the request and the time of the forecast. Here’s a view of the temperature of each location over time, coloured by state:
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" />
-That’s a total of ~1.34 million temperature readings over twenty days, which doesn’t make for the cleanest visualisation, but gives you a sense of the breadth of temperature difference in this vast country of mine. The elephant-sized gap in the middle is a period where my script stopped working, but as we’re looking at point differences between forecasts and actual temperatures, this won’t affect my results.
+That’s a total of 4251931 million temperature readings over 4.92072^{6}. It’s not the the cleanest visualisation, but gives you a sense of the data we’re working with, and as well the breadth of temperature difference in this vast country. If you squint you should be able to a general downward trend of the temperature as we move through Autumn towards Winter.
 
+I could easily go off on a number of tangents with this data, but I’ll just pull out the locations with the highest and lowest mean temperatures during this period:
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="672" />
+Unsurpirisingly we’ve got a city in the north of the country, and a mountain in the very south. This offers up an opportunity to disclose a problem with the data. If you look at the lows in Kunanyi/Mount Wellington between April 1st and 15th, you’ll see their lower bound is 0. I forgot to account for the ‘-’ in my data acquisition script! In a more rigorous analysis I’d probably model and impute these negative temperatures for this and other sites. But taking a look, there doesn’t appear to be many temperatures that would have been below zero, and the sheer weight of other data means these outliers shouldn’t have a significant effect on what I’m looking at.
 
-# Forecasts
+# Forecast Data
 
-``` r
-forecast_distinct |>
-    ggplot() +
-    geom_point(aes(request_datetime_local_floored, forecast_temp), size = .1) 
-```
+The BOM provides a detailed 3-hourly forecst for each location (1:00AM, 4:00AM, … 10:00PM) out for 7 days, and this is what we acquire from their website every ten minutes for each location. This means we get 8 (hourly forecasts) \* 7 (days) \* 526 (locations) = 29,456 forecasts every ten minutes, most of which are identical as the forecasts are not updated on 10 minute intervals.
+
+To prune this data back, we carve it up into two sub-datasets:
+
+- A *changed forecast* set, which contains rows of data where the forecast temperature for a date/time at a location has changed from the previous forecast.  
+- A *day-lagged forecast* set, where we have rows where the time we requested the data was 1,2,3,…7 days from the forecast date/time.
+
+The first set shows us how often the BOM updates their models, and the second we’ll use to assess the accuracy of forecasts at certain durations prior to the forecast date and& time.
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" />
 
-# Forecast Accuracy
-
-``` r
-forecast_lagged <-
-    forecast_lagged |> 
-    mutate(
-        temperature_rounded = round(temperature),
-        temp_diff = forecast_temp - temperature,
-        temp_diff_rounded = forecast_temp - temperature_rounded,
-        forecast_datetime_local = force_tz(forecast_datetime_local, tz = tz)
-    ) |>
-    mutate(location = glue("{city}, {state}")) |> 
-    drop_na()
-```
-
-``` r
-set.seed(32151)
-forecast_lagged |>
-    group_by(location) |>
-    nest(.key = 'data') |>
-    ungroup() |> 
-    slice_sample(n = 4) |>
-    unnest(data) |> 
-    filter(forecast_period == days(1) * 7) |> 
-    ggplot() +
-    geom_point(aes(forecast_datetime_local, temperature_rounded), shape = 2, size = .4) +
-    #geom_line(aes(forecast_datetime_local, temperature_rounded)) +
-    geom_point(aes(forecast_datetime_local, forecast_temp, colour = location), alpha = .6, size = .4) +
-    geom_line(aes(forecast_datetime_local, forecast_temp, colour = location), alpha = .6) +
-    facet_wrap(~location) +
-    labs(
-        colour = "Forecast Temp"
-    )
-```
-
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-9-1.png" width="672" />
 
-``` r
-forecast_lagged |>
-    group_by(forecast_period) |>
-    summarise(
-        mean_forecast_error = mean(temp_diff),
-        sd_forecast_error_round = sd(temp_diff)
-    ) |>
-    mutate(forecast_period = as.duration(forecast_period)) |> 
-    gt() |>
-    cols_label(
-        forecast_period = "Forecast Period",
-        mean_forecast_error = "Forecast Error Mean",
-        sd_forecast_error_round = "Forecast Error Standard Deviation"
-    )
-```
+# Forecast Accuracy
 
-<div id="hjmitruspz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#hjmitruspz table {
+Let’s get to the crux of this article: forecast accuracy. There’s a small fly in the ointment, in that the forecast temperatures that we’ve pulled from the BOM are integers, whereas the temperatures have a single decimal place. I assume BOMs forecast models output reals then they round up or down to the nearest whole number. So a decision: do we round the recorded temperatures to whole numbers as well, or keep them as reals? I’ve made the decision here to continue to use the decimal temperatures, my argument being I don’t want to remove information. My assumption is that the BOM is rounding to the nearest whole number, but to me what they’ve published on their site is the model.
+
+To start, here’s a view of both the 1 day and 6 day forecast overlaid across the recorded temperature for one site (Essendon Airport in Melbourne). Initially it’s a bit messy, but if you zoom in and add/remove the each of the forecasts you get an idea about how it’s changed, and how far off each one is.
+
+<div class="plotly html-widget html-fill-item" id="htmlwidget-1" style="width:672px;height:480px;"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"visdat":{"daef2975e1ff":["function () ","plotlyVisDat"],"daef6effe911":["function () ","data"],"daef7590444":["function () ","data"]},"cur_data":"daef7590444","attrs":{"daef2975e1ff":{"x":{},"y":{},"mode":"lines+markers","name":"Recorded Temperature","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"daef6effe911":{"x":{},"y":{},"mode":"lines+markers","name":"6 Day Forecast","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","alpha":0.59999999999999998,"inherit":true},"daef7590444":{"x":{},"y":{},"mode":"lines+markers","name":"1 Day Forecast","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","alpha":0.59999999999999998,"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"forecast_datetime_local"},"yaxis":{"domain":[0,1],"automargin":true,"title":"temperature"},"hovermode":"closest","showlegend":true},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"x":["2025-04-08 10:00:00.000000","2025-04-08 13:00:00.000000","2025-04-08 16:00:00.000000","2025-04-08 19:00:00.000000","2025-04-08 22:00:00.000000","2025-04-09 04:00:00.000000","2025-04-09 07:00:00.000000","2025-04-09 10:00:00.000000","2025-04-09 13:00:00.000000","2025-04-09 16:00:00.000000","2025-04-09 19:00:00.000000","2025-04-09 22:00:00.000000","2025-04-10 04:00:00.000000","2025-04-10 07:00:00.000000","2025-04-10 10:00:00.000000","2025-04-10 13:00:00.000000","2025-04-10 16:00:00.000000","2025-04-10 19:00:00.000000","2025-04-10 22:00:00.000000","2025-04-11 04:00:00.000000","2025-04-11 07:00:00.000000","2025-04-11 10:00:00.000000","2025-04-11 13:00:00.000000","2025-04-11 16:00:00.000000","2025-04-11 19:00:00.000000","2025-04-11 22:00:00.000000","2025-04-12 04:00:00.000000","2025-04-12 07:00:00.000000","2025-04-12 10:00:00.000000","2025-04-12 13:00:00.000000","2025-04-12 16:00:00.000000","2025-04-12 19:00:00.000000","2025-04-12 22:00:00.000000","2025-04-13 01:00:00.000000","2025-04-13 07:00:00.000000","2025-04-13 10:00:00.000000","2025-04-13 13:00:00.000000","2025-04-13 16:00:00.000000","2025-04-13 19:00:00.000000","2025-04-13 22:00:00.000000","2025-04-14 01:00:00.000000","2025-04-14 04:00:00.000000","2025-04-14 07:00:00.000000","2025-04-14 10:00:00.000000","2025-04-14 13:00:00.000000","2025-04-14 16:00:00.000000","2025-04-14 19:00:00.000000","2025-04-14 22:00:00.000000","2025-04-15 01:00:00.000000","2025-04-15 04:00:00.000000","2025-04-15 07:00:00.000000","2025-04-15 10:00:00.000000","2025-04-15 13:00:00.000000","2025-04-15 16:00:00.000000","2025-04-15 19:00:00.000000","2025-04-15 22:00:00.000000","2025-04-16 01:00:00.000000","2025-04-16 04:00:00.000000","2025-04-16 07:00:00.000000","2025-04-16 10:00:00.000000","2025-04-16 13:00:00.000000","2025-04-16 16:00:00.000000","2025-04-16 19:00:00.000000","2025-04-16 22:00:00.000000","2025-04-17 01:00:00.000000","2025-04-17 04:00:00.000000","2025-04-17 07:00:00.000000","2025-04-17 10:00:00.000000","2025-04-17 13:00:00.000000","2025-04-17 16:00:00.000000","2025-04-17 19:00:00.000000","2025-04-17 22:00:00.000000","2025-04-18 01:00:00.000000","2025-04-18 04:00:00.000000","2025-04-18 07:00:00.000000","2025-04-18 10:00:00.000000","2025-04-18 13:00:00.000000","2025-04-18 16:00:00.000000","2025-04-18 19:00:00.000000","2025-04-18 22:00:00.000000","2025-04-19 01:00:00.000000","2025-04-19 04:00:00.000000","2025-04-19 07:00:00.000000","2025-04-19 10:00:00.000000","2025-04-19 13:00:00.000000","2025-04-19 16:00:00.000000","2025-04-19 19:00:00.000000","2025-04-19 22:00:00.000000","2025-04-20 01:00:00.000000","2025-04-20 04:00:00.000000","2025-04-20 07:00:00.000000","2025-04-20 10:00:00.000000","2025-04-20 13:00:00.000000","2025-04-20 16:00:00.000000","2025-04-20 19:00:00.000000","2025-04-20 22:00:00.000000","2025-04-21 01:00:00.000000","2025-04-21 04:00:00.000000","2025-04-21 07:00:00.000000","2025-04-21 10:00:00.000000","2025-04-21 13:00:00.000000","2025-04-21 16:00:00.000000","2025-04-21 19:00:00.000000","2025-04-21 22:00:00.000000","2025-04-22 01:00:00.000000","2025-04-22 04:00:00.000000","2025-04-22 07:00:00.000000","2025-04-22 10:00:00.000000","2025-04-22 13:00:00.000000","2025-04-22 16:00:00.000000","2025-04-22 19:00:00.000000","2025-04-22 22:00:00.000000","2025-04-23 01:00:00.000000","2025-04-23 04:00:00.000000","2025-04-23 07:00:00.000000","2025-04-23 10:00:00.000000","2025-04-23 16:00:00.000000","2025-04-23 19:00:00.000000","2025-04-23 22:00:00.000000","2025-04-24 01:00:00.000000","2025-04-24 04:00:00.000000","2025-04-24 07:00:00.000000","2025-04-24 10:00:00.000000","2025-04-24 13:00:00.000000","2025-04-24 16:00:00.000000","2025-04-24 19:00:00.000000","2025-04-24 22:00:00.000000","2025-04-25 01:00:00.000000","2025-04-25 04:00:00.000000","2025-04-25 07:00:00.000000","2025-04-25 10:00:00.000000","2025-04-25 13:00:00.000000","2025-04-25 16:00:00.000000","2025-04-25 19:00:00.000000","2025-04-25 22:00:00.000000","2025-04-26 01:00:00.000000","2025-04-26 04:00:00.000000","2025-04-26 07:00:00.000000","2025-04-26 10:00:00.000000","2025-04-26 13:00:00.000000","2025-04-26 16:00:00.000000","2025-04-26 19:00:00.000000","2025-04-26 22:00:00.000000","2025-04-27 01:00:00.000000","2025-04-27 04:00:00.000000","2025-04-27 07:00:00.000000","2025-04-27 10:00:00.000000","2025-04-27 13:00:00.000000","2025-04-27 16:00:00.000000","2025-04-27 19:00:00.000000","2025-04-27 22:00:00.000000","2025-04-28 01:00:00.000000","2025-04-28 04:00:00.000000","2025-04-28 07:00:00.000000","2025-04-28 10:00:00.000000","2025-04-28 13:00:00.000000","2025-04-28 16:00:00.000000","2025-04-28 19:00:00.000000","2025-04-28 22:00:00.000000","2025-04-29 01:00:00.000000","2025-04-29 04:00:00.000000","2025-04-29 07:00:00.000000","2025-04-29 10:00:00.000000","2025-04-29 13:00:00.000000","2025-04-29 16:00:00.000000","2025-04-29 19:00:00.000000","2025-04-29 22:00:00.000000","2025-04-30 01:00:00.000000","2025-04-30 07:00:00.000000","2025-04-30 10:00:00.000000","2025-04-30 13:00:00.000000","2025-04-30 16:00:00.000000","2025-04-30 19:00:00.000000","2025-04-30 22:00:00.000000","2025-05-01 01:00:00.000000","2025-05-01 04:00:00.000000","2025-05-01 07:00:00.000000","2025-05-01 10:00:00.000000","2025-05-01 13:00:00.000000","2025-05-01 16:00:00.000000","2025-05-01 19:00:00.000000","2025-05-01 22:00:00.000000","2025-05-02 01:00:00.000000","2025-05-02 04:00:00.000000","2025-05-02 07:00:00.000000","2025-05-02 10:00:00.000000","2025-05-02 13:00:00.000000","2025-05-02 16:00:00.000000","2025-05-02 19:00:00.000000","2025-05-02 22:00:00.000000","2025-05-03 01:00:00.000000","2025-05-03 04:00:00.000000","2025-05-03 07:00:00.000000","2025-05-03 10:00:00.000000","2025-05-03 13:00:00.000000","2025-05-03 16:00:00.000000","2025-05-03 19:00:00.000000","2025-05-03 22:00:00.000000","2025-05-04 01:00:00.000000","2025-05-04 04:00:00.000000","2025-05-04 07:00:00.000000","2025-05-04 10:00:00.000000","2025-05-04 13:00:00.000000","2025-05-04 16:00:00.000000","2025-05-04 19:00:00.000000","2025-05-04 22:00:00.000000","2025-05-05 01:00:00.000000","2025-05-05 04:00:00.000000","2025-05-05 07:00:00.000000","2025-05-05 10:00:00.000000","2025-05-05 13:00:00.000000","2025-05-05 16:00:00.000000","2025-05-05 19:00:00.000000","2025-05-05 22:00:00.000000","2025-05-06 01:00:00.000000","2025-05-06 04:00:00.000000","2025-05-06 07:00:00.000000","2025-05-06 10:00:00.000000","2025-05-06 13:00:00.000000","2025-05-06 16:00:00.000000","2025-05-06 19:00:00.000000","2025-05-06 22:00:00.000000","2025-05-07 01:00:00.000000","2025-05-07 04:00:00.000000","2025-05-07 07:00:00.000000","2025-05-07 10:00:00.000000","2025-05-07 13:00:00.000000","2025-05-07 16:00:00.000000","2025-05-07 19:00:00.000000","2025-05-07 22:00:00.000000","2025-05-08 01:00:00.000000","2025-05-08 04:00:00.000000","2025-05-08 07:00:00.000000","2025-05-08 10:00:00.000000","2025-05-08 13:00:00.000000","2025-05-08 16:00:00.000000","2025-05-08 19:00:00.000000","2025-05-08 22:00:00.000000","2025-05-09 01:00:00.000000","2025-05-09 04:00:00.000000","2025-05-09 07:00:00.000000","2025-05-09 10:00:00.000000","2025-05-09 13:00:00.000000","2025-05-09 16:00:00.000000","2025-05-09 19:00:00.000000","2025-05-09 22:00:00.000000","2025-05-10 01:00:00.000000","2025-05-10 04:00:00.000000","2025-05-10 07:00:00.000000","2025-05-10 10:00:00.000000","2025-05-10 13:00:00.000000","2025-05-10 16:00:00.000000","2025-05-10 19:00:00.000000","2025-05-10 22:00:00.000000","2025-05-11 01:00:00.000000","2025-05-11 04:00:00.000000","2025-05-11 07:00:00.000000","2025-05-11 10:00:00.000000","2025-05-11 13:00:00.000000","2025-05-11 16:00:00.000000","2025-05-11 19:00:00.000000","2025-05-11 22:00:00.000000","2025-05-12 01:00:00.000000","2025-05-12 04:00:00.000000","2025-05-12 07:00:00.000000","2025-05-12 10:00:00.000000","2025-05-12 13:00:00.000000","2025-05-12 16:00:00.000000","2025-05-12 19:00:00.000000","2025-05-13 01:00:00.000000","2025-05-13 04:00:00.000000","2025-05-13 07:00:00.000000","2025-05-13 10:00:00.000000","2025-05-13 13:00:00.000000","2025-05-13 16:00:00.000000","2025-05-13 19:00:00.000000","2025-05-13 22:00:00.000000","2025-05-14 01:00:00.000000","2025-05-14 04:00:00.000000","2025-05-14 07:00:00.000000","2025-05-14 10:00:00.000000","2025-05-14 13:00:00.000000","2025-05-14 16:00:00.000000","2025-05-14 19:00:00.000000","2025-05-14 22:00:00.000000","2025-05-15 01:00:00.000000","2025-05-15 04:00:00.000000","2025-05-15 07:00:00.000000","2025-05-15 10:00:00.000000","2025-05-15 13:00:00.000000","2025-05-15 16:00:00.000000","2025-05-15 19:00:00.000000","2025-05-15 22:00:00.000000","2025-05-16 01:00:00.000000","2025-05-16 04:00:00.000000","2025-05-16 07:00:00.000000","2025-05-16 10:00:00.000000","2025-05-16 13:00:00.000000","2025-05-16 16:00:00.000000","2025-05-16 19:00:00.000000","2025-05-16 22:00:00.000000","2025-05-17 01:00:00.000000","2025-05-17 04:00:00.000000","2025-05-17 07:00:00.000000","2025-05-17 10:00:00.000000","2025-05-17 13:00:00.000000","2025-05-17 16:00:00.000000","2025-05-17 19:00:00.000000","2025-05-17 22:00:00.000000","2025-05-18 01:00:00.000000","2025-05-18 04:00:00.000000","2025-05-18 07:00:00.000000","2025-05-18 10:00:00.000000","2025-05-18 13:00:00.000000","2025-05-18 16:00:00.000000","2025-05-18 19:00:00.000000","2025-05-18 22:00:00.000000","2025-05-19 01:00:00.000000","2025-05-19 04:00:00.000000","2025-05-19 07:00:00.000000","2025-05-19 10:00:00.000000","2025-05-19 13:00:00.000000","2025-05-19 16:00:00.000000","2025-05-19 19:00:00.000000","2025-05-19 22:00:00.000000","2025-05-20 01:00:00.000000","2025-05-20 07:00:00.000000","2025-05-20 10:00:00.000000","2025-05-20 13:00:00.000000","2025-05-20 16:00:00.000000","2025-05-20 19:00:00.000000","2025-05-20 22:00:00.000000","2025-05-21 01:00:00.000000","2025-05-21 04:00:00.000000","2025-05-21 07:00:00.000000","2025-05-21 10:00:00.000000","2025-05-21 13:00:00.000000","2025-05-21 16:00:00.000000","2025-05-21 19:00:00.000000","2025-05-21 22:00:00.000000","2025-05-22 01:00:00.000000","2025-05-22 04:00:00.000000","2025-05-22 07:00:00.000000","2025-05-22 10:00:00.000000","2025-05-22 13:00:00.000000","2025-05-22 16:00:00.000000","2025-05-22 19:00:00.000000","2025-05-22 22:00:00.000000","2025-05-23 01:00:00.000000","2025-05-23 04:00:00.000000","2025-05-23 07:00:00.000000","2025-05-23 10:00:00.000000","2025-05-23 13:00:00.000000","2025-05-23 16:00:00.000000","2025-05-23 19:00:00.000000","2025-05-23 22:00:00.000000","2025-05-24 01:00:00.000000","2025-05-24 04:00:00.000000","2025-05-24 07:00:00.000000","2025-05-24 10:00:00.000000","2025-05-24 13:00:00.000000","2025-05-24 16:00:00.000000","2025-05-24 19:00:00.000000","2025-05-24 22:00:00.000000","2025-05-25 01:00:00.000000","2025-05-25 04:00:00.000000","2025-05-25 07:00:00.000000","2025-05-25 10:00:00.000000","2025-05-25 13:00:00.000000","2025-05-25 16:00:00.000000","2025-05-25 19:00:00.000000","2025-05-25 22:00:00.000000","2025-05-26 01:00:00.000000","2025-05-26 04:00:00.000000","2025-05-26 07:00:00.000000","2025-05-26 10:00:00.000000","2025-05-26 13:00:00.000000","2025-05-26 16:00:00.000000","2025-05-26 19:00:00.000000","2025-05-26 22:00:00.000000","2025-05-27 01:00:00.000000","2025-05-27 04:00:00.000000","2025-05-27 07:00:00.000000","2025-05-27 10:00:00.000000","2025-05-27 13:00:00.000000","2025-05-27 16:00:00.000000","2025-05-27 19:00:00.000000","2025-05-27 22:00:00.000000","2025-05-28 01:00:00.000000","2025-05-28 04:00:00.000000","2025-05-28 07:00:00.000000","2025-05-28 10:00:00.000000","2025-05-28 13:00:00.000000","2025-05-28 16:00:00.000000","2025-05-28 19:00:00.000000","2025-05-28 22:00:00.000000","2025-05-29 01:00:00.000000","2025-05-29 04:00:00.000000"],"y":[15.5,16.899999999999999,18.100000000000001,14.199999999999999,12.199999999999999,9.5,8.8000000000000007,16.600000000000001,22.100000000000001,19.199999999999999,16.199999999999999,16,14.6,15.5,21.600000000000001,26.100000000000001,27.699999999999999,23.100000000000001,21.100000000000001,15.800000000000001,15.9,19.300000000000001,20.899999999999999,20.300000000000001,17.699999999999999,14.1,12.199999999999999,11.300000000000001,20.199999999999999,28,27.699999999999999,22,18.800000000000001,22.300000000000001,21.5,26.600000000000001,31.300000000000001,30.800000000000001,26.300000000000001,24.600000000000001,18,18.100000000000001,17.800000000000001,19.199999999999999,20.899999999999999,20.899999999999999,18.100000000000001,15.4,13.800000000000001,13,12.1,18.199999999999999,24.899999999999999,27.600000000000001,21.5,18.699999999999999,17.5,16.5,18.300000000000001,20.699999999999999,26.300000000000001,26.5,23.600000000000001,21.399999999999999,17.699999999999999,17.199999999999999,14.6,25.600000000000001,29.399999999999999,29,24.199999999999999,20.300000000000001,19.800000000000001,18.800000000000001,19.199999999999999,25.399999999999999,30.100000000000001,30.600000000000001,18.199999999999999,17.399999999999999,16.899999999999999,21.300000000000001,21.300000000000001,24.300000000000001,27.800000000000001,27.699999999999999,25.800000000000001,22.899999999999999,21.399999999999999,21.699999999999999,20.300000000000001,19.699999999999999,24.5,22.100000000000001,18.699999999999999,16.300000000000001,15.5,14.9,14,18.699999999999999,21,19.100000000000001,16.899999999999999,14.4,14.1,13.4,13.800000000000001,14.699999999999999,17.699999999999999,18.300000000000001,17.600000000000001,15.300000000000001,14.4,12.4,11.9,17.800000000000001,23.5,17.800000000000001,16.100000000000001,14.9,13.699999999999999,17.399999999999999,23.199999999999999,25.199999999999999,26,23.199999999999999,23,21.699999999999999,17.699999999999999,16,23,22.699999999999999,18.300000000000001,17.100000000000001,16.600000000000001,15.699999999999999,15.4,15.300000000000001,16.800000000000001,19,17.100000000000001,16.800000000000001,16.699999999999999,16.199999999999999,15.6,15.300000000000001,16.5,15.199999999999999,16.399999999999999,13.199999999999999,13.4,11.699999999999999,11.1,12.300000000000001,16.300000000000001,18.100000000000001,17,14.9,14.199999999999999,13.699999999999999,13,13.4,15.9,16.5,14.300000000000001,14.5,13.5,12.800000000000001,9.9000000000000004,15.800000000000001,18.300000000000001,16.699999999999999,13.300000000000001,11.199999999999999,10.300000000000001,9,7.5,13.5,16.600000000000001,17.800000000000001,13.4,11.300000000000001,9.3000000000000007,7.5,6.4000000000000004,14.699999999999999,18.899999999999999,20.100000000000001,14.300000000000001,13.199999999999999,11,8.6999999999999993,8.8000000000000007,16.300000000000001,20.300000000000001,19.899999999999999,15.5,11.6,14.699999999999999,15.300000000000001,13.800000000000001,18.100000000000001,22.399999999999999,21.800000000000001,17.699999999999999,16.199999999999999,16.600000000000001,15.5,15.4,18.199999999999999,23,24.399999999999999,22.199999999999999,19.899999999999999,19.399999999999999,18.899999999999999,17.600000000000001,20.800000000000001,25.800000000000001,25.100000000000001,22.199999999999999,19.800000000000001,17.5,15.4,15.6,19.300000000000001,16.899999999999999,17.800000000000001,14.1,11.300000000000001,8.9000000000000004,8.5999999999999996,8.1999999999999993,13.1,15.9,15.1,12.5,12.9,11.9,10.6,8.6999999999999993,14.1,16.399999999999999,17,12.800000000000001,10.800000000000001,8.8000000000000007,7.5,5.5,14.199999999999999,18.699999999999999,17.800000000000001,13.4,11.800000000000001,9.4000000000000004,7.9000000000000004,11.199999999999999,18.199999999999999,21.699999999999999,22.199999999999999,18.100000000000001,14.699999999999999,13.5,13.300000000000001,10.199999999999999,18.100000000000001,19.899999999999999,18.5,14.6,10.800000000000001,9.8000000000000007,9.4000000000000004,16.199999999999999,20.800000000000001,21.100000000000001,16.100000000000001,13.199999999999999,11.5,11.800000000000001,10.800000000000001,16.300000000000001,19.699999999999999,17.399999999999999,12.5,12.300000000000001,10.199999999999999,10.1,10.199999999999999,15.4,16.899999999999999,16.5,11.300000000000001,11.1,8.4000000000000004,7.4000000000000004,6.4000000000000004,14.5,16.100000000000001,16.800000000000001,15.5,14.1,12.6,10.9,10.6,10.800000000000001,11.699999999999999,10.800000000000001,9.1999999999999993,8.6999999999999993,9,6.7000000000000002,8,11.199999999999999,11.800000000000001,12.199999999999999,9,6.0999999999999996,5.2000000000000002,4,3,10.199999999999999,13.300000000000001,13.199999999999999,8.9000000000000004,7.7999999999999998,6,4.5,12.1,16.899999999999999,15.1,11.5,7.7000000000000002,5.5999999999999996,3.2999999999999998,1.5,9.9000000000000004,14.699999999999999,14.300000000000001,10.1,8.5,8,5.5,5.4000000000000004,9.5999999999999996,13.9,15.300000000000001,14.800000000000001,13.800000000000001,13.1,13,12.6,13.699999999999999,15.800000000000001,15.699999999999999,14.6,12.5,13.5,13.800000000000001,14,14.800000000000001,17.600000000000001,18.100000000000001,15.5,14.9,13.699999999999999,11.800000000000001,10,13.6,17.100000000000001,17.5,14.6,16,14.9,14.6,13.6,15.4,18.5,19.5,15.5,12.699999999999999,10.4,9.5,8.6999999999999993,12.199999999999999,12.300000000000001,13.300000000000001,10.800000000000001,10.5,11,11.1,11.1,12.5,14.9,13.699999999999999,11.6,11.4,11.199999999999999,11.1],"mode":"lines+markers","name":"Recorded Temperature","type":"scatter","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2025-04-08 10:00:00.000000","2025-04-08 13:00:00.000000","2025-04-08 16:00:00.000000","2025-04-08 19:00:00.000000","2025-04-08 22:00:00.000000","2025-04-09 04:00:00.000000","2025-04-09 07:00:00.000000","2025-04-09 10:00:00.000000","2025-04-09 13:00:00.000000","2025-04-09 16:00:00.000000","2025-04-09 19:00:00.000000","2025-04-09 22:00:00.000000","2025-04-10 04:00:00.000000","2025-04-10 07:00:00.000000","2025-04-10 10:00:00.000000","2025-04-10 13:00:00.000000","2025-04-10 16:00:00.000000","2025-04-10 19:00:00.000000","2025-04-10 22:00:00.000000","2025-04-11 04:00:00.000000","2025-04-11 07:00:00.000000","2025-04-11 10:00:00.000000","2025-04-11 13:00:00.000000","2025-04-11 16:00:00.000000","2025-04-11 19:00:00.000000","2025-04-11 22:00:00.000000","2025-04-12 04:00:00.000000","2025-04-12 07:00:00.000000","2025-04-12 10:00:00.000000","2025-04-12 13:00:00.000000","2025-04-12 16:00:00.000000","2025-04-12 19:00:00.000000","2025-04-12 22:00:00.000000","2025-04-13 01:00:00.000000","2025-04-13 07:00:00.000000","2025-04-13 10:00:00.000000","2025-04-13 13:00:00.000000","2025-04-13 16:00:00.000000","2025-04-13 19:00:00.000000","2025-04-13 22:00:00.000000","2025-04-14 01:00:00.000000","2025-04-14 04:00:00.000000","2025-04-14 07:00:00.000000","2025-04-14 10:00:00.000000","2025-04-14 13:00:00.000000","2025-04-14 16:00:00.000000","2025-04-14 19:00:00.000000","2025-04-14 22:00:00.000000","2025-04-15 01:00:00.000000","2025-04-15 04:00:00.000000","2025-04-15 07:00:00.000000","2025-04-15 10:00:00.000000","2025-04-15 13:00:00.000000","2025-04-15 16:00:00.000000","2025-04-15 19:00:00.000000","2025-04-15 22:00:00.000000","2025-04-16 01:00:00.000000","2025-04-16 04:00:00.000000","2025-04-16 07:00:00.000000","2025-04-16 10:00:00.000000","2025-04-16 13:00:00.000000","2025-04-16 16:00:00.000000","2025-04-16 19:00:00.000000","2025-04-16 22:00:00.000000","2025-04-17 01:00:00.000000","2025-04-17 04:00:00.000000","2025-04-17 07:00:00.000000","2025-04-17 10:00:00.000000","2025-04-17 13:00:00.000000","2025-04-17 16:00:00.000000","2025-04-17 19:00:00.000000","2025-04-17 22:00:00.000000","2025-04-18 01:00:00.000000","2025-04-18 04:00:00.000000","2025-04-18 07:00:00.000000","2025-04-18 10:00:00.000000","2025-04-18 13:00:00.000000","2025-04-18 16:00:00.000000","2025-04-18 19:00:00.000000","2025-04-18 22:00:00.000000","2025-04-19 01:00:00.000000","2025-04-19 04:00:00.000000","2025-04-19 07:00:00.000000","2025-04-19 10:00:00.000000","2025-04-19 13:00:00.000000","2025-04-19 16:00:00.000000","2025-04-19 19:00:00.000000","2025-04-19 22:00:00.000000","2025-04-20 01:00:00.000000","2025-04-20 04:00:00.000000","2025-04-20 07:00:00.000000","2025-04-20 10:00:00.000000","2025-04-20 13:00:00.000000","2025-04-20 16:00:00.000000","2025-04-20 19:00:00.000000","2025-04-20 22:00:00.000000","2025-04-21 01:00:00.000000","2025-04-21 04:00:00.000000","2025-04-21 07:00:00.000000","2025-04-21 10:00:00.000000","2025-04-21 13:00:00.000000","2025-04-21 16:00:00.000000","2025-04-21 19:00:00.000000","2025-04-21 22:00:00.000000","2025-04-22 01:00:00.000000","2025-04-22 04:00:00.000000","2025-04-22 07:00:00.000000","2025-04-22 10:00:00.000000","2025-04-22 13:00:00.000000","2025-04-22 16:00:00.000000","2025-04-22 19:00:00.000000","2025-04-22 22:00:00.000000","2025-04-23 01:00:00.000000","2025-04-23 04:00:00.000000","2025-04-23 07:00:00.000000","2025-04-23 10:00:00.000000","2025-04-23 16:00:00.000000","2025-04-23 19:00:00.000000","2025-04-23 22:00:00.000000","2025-04-24 01:00:00.000000","2025-04-24 04:00:00.000000","2025-04-24 07:00:00.000000","2025-04-24 10:00:00.000000","2025-04-24 13:00:00.000000","2025-04-24 16:00:00.000000","2025-04-24 19:00:00.000000","2025-04-24 22:00:00.000000","2025-04-25 01:00:00.000000","2025-04-25 04:00:00.000000","2025-04-25 07:00:00.000000","2025-04-25 10:00:00.000000","2025-04-25 13:00:00.000000","2025-04-25 16:00:00.000000","2025-04-25 19:00:00.000000","2025-04-25 22:00:00.000000","2025-04-26 01:00:00.000000","2025-04-26 04:00:00.000000","2025-04-26 07:00:00.000000","2025-04-26 10:00:00.000000","2025-04-26 13:00:00.000000","2025-04-26 16:00:00.000000","2025-04-26 19:00:00.000000","2025-04-26 22:00:00.000000","2025-04-27 01:00:00.000000","2025-04-27 04:00:00.000000","2025-04-27 07:00:00.000000","2025-04-27 10:00:00.000000","2025-04-27 13:00:00.000000","2025-04-27 16:00:00.000000","2025-04-27 19:00:00.000000","2025-04-27 22:00:00.000000","2025-04-28 01:00:00.000000","2025-04-28 04:00:00.000000","2025-04-28 07:00:00.000000","2025-04-28 10:00:00.000000","2025-04-28 13:00:00.000000","2025-04-28 16:00:00.000000","2025-04-28 19:00:00.000000","2025-04-28 22:00:00.000000","2025-04-29 01:00:00.000000","2025-04-29 04:00:00.000000","2025-04-29 07:00:00.000000","2025-04-29 10:00:00.000000","2025-04-29 13:00:00.000000","2025-04-29 16:00:00.000000","2025-04-29 19:00:00.000000","2025-04-29 22:00:00.000000","2025-04-30 01:00:00.000000","2025-04-30 07:00:00.000000","2025-04-30 10:00:00.000000","2025-04-30 13:00:00.000000","2025-04-30 16:00:00.000000","2025-04-30 19:00:00.000000","2025-04-30 22:00:00.000000","2025-05-01 01:00:00.000000","2025-05-01 04:00:00.000000","2025-05-01 07:00:00.000000","2025-05-01 10:00:00.000000","2025-05-01 13:00:00.000000","2025-05-01 16:00:00.000000","2025-05-01 19:00:00.000000","2025-05-01 22:00:00.000000","2025-05-02 01:00:00.000000","2025-05-02 04:00:00.000000","2025-05-02 07:00:00.000000","2025-05-02 10:00:00.000000","2025-05-02 13:00:00.000000","2025-05-02 16:00:00.000000","2025-05-02 19:00:00.000000","2025-05-02 22:00:00.000000","2025-05-03 01:00:00.000000","2025-05-03 04:00:00.000000","2025-05-03 07:00:00.000000","2025-05-03 10:00:00.000000","2025-05-03 13:00:00.000000","2025-05-03 16:00:00.000000","2025-05-03 19:00:00.000000","2025-05-03 22:00:00.000000","2025-05-04 01:00:00.000000","2025-05-04 04:00:00.000000","2025-05-04 07:00:00.000000","2025-05-04 10:00:00.000000","2025-05-04 13:00:00.000000","2025-05-04 16:00:00.000000","2025-05-04 19:00:00.000000","2025-05-04 22:00:00.000000","2025-05-05 01:00:00.000000","2025-05-05 04:00:00.000000","2025-05-05 07:00:00.000000","2025-05-05 10:00:00.000000","2025-05-05 13:00:00.000000","2025-05-05 16:00:00.000000","2025-05-05 19:00:00.000000","2025-05-05 22:00:00.000000","2025-05-06 01:00:00.000000","2025-05-06 04:00:00.000000","2025-05-06 07:00:00.000000","2025-05-06 10:00:00.000000","2025-05-06 13:00:00.000000","2025-05-06 16:00:00.000000","2025-05-06 19:00:00.000000","2025-05-06 22:00:00.000000","2025-05-07 01:00:00.000000","2025-05-07 04:00:00.000000","2025-05-07 07:00:00.000000","2025-05-07 10:00:00.000000","2025-05-07 13:00:00.000000","2025-05-07 16:00:00.000000","2025-05-07 19:00:00.000000","2025-05-07 22:00:00.000000","2025-05-08 01:00:00.000000","2025-05-08 04:00:00.000000","2025-05-08 07:00:00.000000","2025-05-08 10:00:00.000000","2025-05-08 13:00:00.000000","2025-05-08 16:00:00.000000","2025-05-08 19:00:00.000000","2025-05-08 22:00:00.000000","2025-05-09 01:00:00.000000","2025-05-09 04:00:00.000000","2025-05-09 07:00:00.000000","2025-05-09 10:00:00.000000","2025-05-09 13:00:00.000000","2025-05-09 16:00:00.000000","2025-05-09 19:00:00.000000","2025-05-09 22:00:00.000000","2025-05-10 01:00:00.000000","2025-05-10 04:00:00.000000","2025-05-10 07:00:00.000000","2025-05-10 10:00:00.000000","2025-05-10 13:00:00.000000","2025-05-10 16:00:00.000000","2025-05-10 19:00:00.000000","2025-05-10 22:00:00.000000","2025-05-11 01:00:00.000000","2025-05-11 04:00:00.000000","2025-05-11 07:00:00.000000","2025-05-11 10:00:00.000000","2025-05-11 13:00:00.000000","2025-05-11 16:00:00.000000","2025-05-11 19:00:00.000000","2025-05-11 22:00:00.000000","2025-05-12 01:00:00.000000","2025-05-12 04:00:00.000000","2025-05-12 07:00:00.000000","2025-05-12 10:00:00.000000","2025-05-12 13:00:00.000000","2025-05-12 16:00:00.000000","2025-05-12 19:00:00.000000","2025-05-13 01:00:00.000000","2025-05-13 04:00:00.000000","2025-05-13 07:00:00.000000","2025-05-13 10:00:00.000000","2025-05-13 13:00:00.000000","2025-05-13 16:00:00.000000","2025-05-13 19:00:00.000000","2025-05-13 22:00:00.000000","2025-05-14 01:00:00.000000","2025-05-14 04:00:00.000000","2025-05-14 07:00:00.000000","2025-05-14 10:00:00.000000","2025-05-14 13:00:00.000000","2025-05-14 16:00:00.000000","2025-05-14 19:00:00.000000","2025-05-14 22:00:00.000000","2025-05-15 01:00:00.000000","2025-05-15 04:00:00.000000","2025-05-15 07:00:00.000000","2025-05-15 10:00:00.000000","2025-05-15 13:00:00.000000","2025-05-15 16:00:00.000000","2025-05-15 19:00:00.000000","2025-05-15 22:00:00.000000","2025-05-16 01:00:00.000000","2025-05-16 04:00:00.000000","2025-05-16 07:00:00.000000","2025-05-16 10:00:00.000000","2025-05-16 13:00:00.000000","2025-05-16 16:00:00.000000","2025-05-16 19:00:00.000000","2025-05-16 22:00:00.000000","2025-05-17 01:00:00.000000","2025-05-17 04:00:00.000000","2025-05-17 07:00:00.000000","2025-05-17 10:00:00.000000","2025-05-17 13:00:00.000000","2025-05-17 16:00:00.000000","2025-05-17 19:00:00.000000","2025-05-17 22:00:00.000000","2025-05-18 01:00:00.000000","2025-05-18 04:00:00.000000","2025-05-18 07:00:00.000000","2025-05-18 10:00:00.000000","2025-05-18 13:00:00.000000","2025-05-18 16:00:00.000000","2025-05-18 19:00:00.000000","2025-05-18 22:00:00.000000","2025-05-19 01:00:00.000000","2025-05-19 04:00:00.000000","2025-05-19 07:00:00.000000","2025-05-19 10:00:00.000000","2025-05-19 13:00:00.000000","2025-05-19 16:00:00.000000","2025-05-19 19:00:00.000000","2025-05-19 22:00:00.000000","2025-05-20 01:00:00.000000","2025-05-20 07:00:00.000000","2025-05-20 10:00:00.000000","2025-05-20 13:00:00.000000","2025-05-20 16:00:00.000000","2025-05-20 19:00:00.000000","2025-05-20 22:00:00.000000","2025-05-21 01:00:00.000000","2025-05-21 04:00:00.000000","2025-05-21 07:00:00.000000","2025-05-21 10:00:00.000000","2025-05-21 13:00:00.000000","2025-05-21 16:00:00.000000","2025-05-21 19:00:00.000000","2025-05-21 22:00:00.000000","2025-05-22 01:00:00.000000","2025-05-22 04:00:00.000000","2025-05-22 07:00:00.000000","2025-05-22 10:00:00.000000","2025-05-22 13:00:00.000000","2025-05-22 16:00:00.000000","2025-05-22 19:00:00.000000","2025-05-22 22:00:00.000000","2025-05-23 01:00:00.000000","2025-05-23 04:00:00.000000","2025-05-23 07:00:00.000000","2025-05-23 10:00:00.000000","2025-05-23 13:00:00.000000","2025-05-23 16:00:00.000000","2025-05-23 19:00:00.000000","2025-05-23 22:00:00.000000","2025-05-24 01:00:00.000000","2025-05-24 04:00:00.000000","2025-05-24 07:00:00.000000","2025-05-24 10:00:00.000000","2025-05-24 13:00:00.000000","2025-05-24 16:00:00.000000","2025-05-24 19:00:00.000000","2025-05-24 22:00:00.000000","2025-05-25 01:00:00.000000","2025-05-25 04:00:00.000000","2025-05-25 07:00:00.000000","2025-05-25 10:00:00.000000","2025-05-25 13:00:00.000000","2025-05-25 16:00:00.000000","2025-05-25 19:00:00.000000","2025-05-25 22:00:00.000000","2025-05-26 01:00:00.000000","2025-05-26 04:00:00.000000","2025-05-26 07:00:00.000000","2025-05-26 10:00:00.000000","2025-05-26 13:00:00.000000","2025-05-26 16:00:00.000000","2025-05-26 19:00:00.000000","2025-05-26 22:00:00.000000","2025-05-27 01:00:00.000000","2025-05-27 04:00:00.000000","2025-05-27 07:00:00.000000","2025-05-27 10:00:00.000000","2025-05-27 13:00:00.000000","2025-05-27 16:00:00.000000","2025-05-27 19:00:00.000000","2025-05-27 22:00:00.000000","2025-05-28 01:00:00.000000","2025-05-28 04:00:00.000000","2025-05-28 07:00:00.000000","2025-05-28 10:00:00.000000","2025-05-28 13:00:00.000000","2025-05-28 16:00:00.000000","2025-05-28 19:00:00.000000","2025-05-28 22:00:00.000000","2025-05-29 01:00:00.000000","2025-05-29 04:00:00.000000"],"y":[15,19,19,14,12,10,10,15,19,19,16,13,10,11,18,23,25,21,17,13,13,20,27,29,20,16,13,14,22,28,30,24,20,18,18,23,28,28,24,20,17,16,15,22,27,27,22,19,17,16,16,21,25,26,21,17,15,14,14,21,26,28,25,21,19,18,18,23,27,28,24,21,19,17,16,21,25,24,20,18,17,16,14,20,24,24,21,17,14,12,11,16,19,19,16,13,12,11,10,15,18,18,16,14,13,12,11,16,19,19,16,15,14,13,13,17,21,18,15,13,12,12,18,23,24,21,18,16,15,14,17,19,19,16,14,12,11,10,14,17,17,14,11,9,8,9,15,19,20,15,13,11,11,10,13,16,16,12,10,9,9,8,13,16,16,14,12,11,10,13,17,17,12,11,10,10,9,13,17,16,12,10,8,7,8,13,18,19,14,10,9,9,9,15,22,23,16,11,10,9,10,16,23,23,17,14,13,13,13,18,24,25,20,18,16,15,13,19,25,26,18,14,12,11,11,17,23,23,15,12,10,9,8,14,18,18,15,12,10,9,9,15,21,21,15,11,9,7,8,15,22,23,15,11,9,7,8,15,20,21,17,13,10,9,9,17,23,24,15,10,9,8,14,20,20,15,13,11,10,10,15,19,19,15,13,11,9,9,14,19,19,14,12,10,9,8,13,18,18,15,13,12,11,11,15,18,18,11,9,8,7,6,11,16,17,11,9,7,5,5,11,17,18,11,7,5,5,11,17,18,13,10,9,8,8,13,18,19,15,10,9,9,8,13,17,17,15,13,12,11,11,15,19,19,13,11,9,9,8,15,20,21,16,14,13,12,11,15,19,19,16,14,13,13,11,15,19,18,14,13,12,11,10,13,16,15,12,11,11,11,10,13,15,15,13,11,11,10],"mode":"lines+markers","name":"6 Day Forecast","type":"scatter","marker":{"color":"rgba(255,127,14,0.6)","line":{"color":"rgba(255,127,14,1)"}},"error_y":{"color":"rgba(255,127,14,0.6)"},"error_x":{"color":"rgba(255,127,14,0.6)"},"line":{"color":"rgba(255,127,14,0.6)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2025-04-03 08:00:00.000000","2025-04-03 11:00:00.000000","2025-04-03 14:00:00.000000","2025-04-03 17:00:00.000000","2025-04-03 20:00:00.000000","2025-04-03 23:00:00.000000","2025-04-04 02:00:00.000000","2025-04-04 05:00:00.000000","2025-04-04 08:00:00.000000","2025-04-04 11:00:00.000000","2025-04-04 14:00:00.000000","2025-04-04 17:00:00.000000","2025-04-04 20:00:00.000000","2025-04-04 23:00:00.000000","2025-04-05 02:00:00.000000","2025-04-05 05:00:00.000000","2025-04-05 08:00:00.000000","2025-04-05 11:00:00.000000","2025-04-05 14:00:00.000000","2025-04-05 17:00:00.000000","2025-04-05 20:00:00.000000","2025-04-05 23:00:00.000000","2025-04-06 02:00:00.000000","2025-04-06 04:00:00.000000","2025-04-06 07:00:00.000000","2025-04-06 10:00:00.000000","2025-04-06 13:00:00.000000","2025-04-06 16:00:00.000000","2025-04-06 19:00:00.000000","2025-04-06 22:00:00.000000","2025-04-07 01:00:00.000000","2025-04-07 04:00:00.000000","2025-04-07 07:00:00.000000","2025-04-07 10:00:00.000000","2025-04-07 13:00:00.000000","2025-04-07 16:00:00.000000","2025-04-07 19:00:00.000000","2025-04-07 22:00:00.000000","2025-04-08 01:00:00.000000","2025-04-08 04:00:00.000000","2025-04-08 07:00:00.000000","2025-04-08 10:00:00.000000","2025-04-08 13:00:00.000000","2025-04-08 16:00:00.000000","2025-04-08 19:00:00.000000","2025-04-08 22:00:00.000000","2025-04-09 01:00:00.000000","2025-04-09 04:00:00.000000","2025-04-09 07:00:00.000000","2025-04-09 10:00:00.000000","2025-04-09 13:00:00.000000","2025-04-09 16:00:00.000000","2025-04-09 19:00:00.000000","2025-04-09 22:00:00.000000","2025-04-10 01:00:00.000000","2025-04-10 04:00:00.000000","2025-04-10 07:00:00.000000","2025-04-10 10:00:00.000000","2025-04-10 13:00:00.000000","2025-04-10 16:00:00.000000","2025-04-10 19:00:00.000000","2025-04-10 22:00:00.000000","2025-04-11 01:00:00.000000","2025-04-11 04:00:00.000000","2025-04-11 07:00:00.000000","2025-04-11 10:00:00.000000","2025-04-11 13:00:00.000000","2025-04-11 16:00:00.000000","2025-04-11 19:00:00.000000","2025-04-11 22:00:00.000000","2025-04-12 01:00:00.000000","2025-04-12 04:00:00.000000","2025-04-12 07:00:00.000000","2025-04-12 10:00:00.000000","2025-04-12 13:00:00.000000","2025-04-12 16:00:00.000000","2025-04-12 19:00:00.000000","2025-04-12 22:00:00.000000","2025-04-13 01:00:00.000000","2025-04-13 04:00:00.000000","2025-04-13 07:00:00.000000","2025-04-13 10:00:00.000000","2025-04-13 13:00:00.000000","2025-04-13 16:00:00.000000","2025-04-13 19:00:00.000000","2025-04-13 22:00:00.000000","2025-04-14 01:00:00.000000","2025-04-14 04:00:00.000000","2025-04-14 07:00:00.000000","2025-04-14 10:00:00.000000","2025-04-14 13:00:00.000000","2025-04-14 16:00:00.000000","2025-04-14 19:00:00.000000","2025-04-14 22:00:00.000000","2025-04-15 01:00:00.000000","2025-04-15 04:00:00.000000","2025-04-15 07:00:00.000000","2025-04-15 10:00:00.000000","2025-04-15 13:00:00.000000","2025-04-15 16:00:00.000000","2025-04-15 19:00:00.000000","2025-04-15 22:00:00.000000","2025-04-16 01:00:00.000000","2025-04-16 04:00:00.000000","2025-04-16 07:00:00.000000","2025-04-16 10:00:00.000000","2025-04-16 13:00:00.000000","2025-04-16 16:00:00.000000","2025-04-16 19:00:00.000000","2025-04-16 22:00:00.000000","2025-04-17 01:00:00.000000","2025-04-17 04:00:00.000000","2025-04-17 07:00:00.000000","2025-04-17 10:00:00.000000","2025-04-17 13:00:00.000000","2025-04-17 16:00:00.000000","2025-04-17 19:00:00.000000","2025-04-17 22:00:00.000000","2025-04-18 01:00:00.000000","2025-04-18 04:00:00.000000","2025-04-18 07:00:00.000000","2025-04-18 10:00:00.000000","2025-04-18 16:00:00.000000","2025-04-18 19:00:00.000000","2025-04-18 22:00:00.000000","2025-04-19 01:00:00.000000","2025-04-19 04:00:00.000000","2025-04-19 07:00:00.000000","2025-04-19 10:00:00.000000","2025-04-19 13:00:00.000000","2025-04-19 16:00:00.000000","2025-04-19 19:00:00.000000","2025-04-19 22:00:00.000000","2025-04-20 01:00:00.000000","2025-04-20 04:00:00.000000","2025-04-20 07:00:00.000000","2025-04-20 10:00:00.000000","2025-04-20 13:00:00.000000","2025-04-20 16:00:00.000000","2025-04-20 19:00:00.000000","2025-04-20 22:00:00.000000","2025-04-21 01:00:00.000000","2025-04-21 04:00:00.000000","2025-04-21 07:00:00.000000","2025-04-21 10:00:00.000000","2025-04-21 13:00:00.000000","2025-04-21 16:00:00.000000","2025-04-21 19:00:00.000000","2025-04-21 22:00:00.000000","2025-04-22 01:00:00.000000","2025-04-22 04:00:00.000000","2025-04-22 07:00:00.000000","2025-04-22 10:00:00.000000","2025-04-22 13:00:00.000000","2025-04-22 16:00:00.000000","2025-04-22 19:00:00.000000","2025-04-22 22:00:00.000000","2025-04-23 01:00:00.000000","2025-04-23 04:00:00.000000","2025-04-23 07:00:00.000000","2025-04-23 10:00:00.000000","2025-04-23 13:00:00.000000","2025-04-23 16:00:00.000000","2025-04-23 19:00:00.000000","2025-04-23 22:00:00.000000","2025-04-24 01:00:00.000000","2025-04-24 04:00:00.000000","2025-04-24 07:00:00.000000","2025-04-24 10:00:00.000000","2025-04-24 13:00:00.000000","2025-04-24 16:00:00.000000","2025-04-24 19:00:00.000000","2025-04-24 22:00:00.000000","2025-04-25 01:00:00.000000","2025-04-25 04:00:00.000000","2025-04-25 07:00:00.000000","2025-04-25 10:00:00.000000","2025-04-25 13:00:00.000000","2025-04-25 16:00:00.000000","2025-04-25 19:00:00.000000","2025-04-25 22:00:00.000000","2025-04-26 01:00:00.000000","2025-04-26 04:00:00.000000","2025-04-26 07:00:00.000000","2025-04-26 10:00:00.000000","2025-04-26 13:00:00.000000","2025-04-26 16:00:00.000000","2025-04-26 19:00:00.000000","2025-04-26 22:00:00.000000","2025-04-27 01:00:00.000000","2025-04-27 04:00:00.000000","2025-04-27 07:00:00.000000","2025-04-27 10:00:00.000000","2025-04-27 13:00:00.000000","2025-04-27 16:00:00.000000","2025-04-27 19:00:00.000000","2025-04-27 22:00:00.000000","2025-04-28 01:00:00.000000","2025-04-28 04:00:00.000000","2025-04-28 07:00:00.000000","2025-04-28 10:00:00.000000","2025-04-28 13:00:00.000000","2025-04-28 16:00:00.000000","2025-04-28 19:00:00.000000","2025-04-28 22:00:00.000000","2025-04-29 01:00:00.000000","2025-04-29 04:00:00.000000","2025-04-29 07:00:00.000000","2025-04-29 10:00:00.000000","2025-04-29 13:00:00.000000","2025-04-29 16:00:00.000000","2025-04-29 19:00:00.000000","2025-04-29 22:00:00.000000","2025-04-30 01:00:00.000000","2025-04-30 04:00:00.000000","2025-04-30 07:00:00.000000","2025-04-30 10:00:00.000000","2025-04-30 13:00:00.000000","2025-04-30 16:00:00.000000","2025-04-30 19:00:00.000000","2025-04-30 22:00:00.000000","2025-05-01 01:00:00.000000","2025-05-01 04:00:00.000000","2025-05-01 07:00:00.000000","2025-05-01 10:00:00.000000","2025-05-01 13:00:00.000000","2025-05-01 16:00:00.000000","2025-05-01 19:00:00.000000","2025-05-01 22:00:00.000000","2025-05-02 01:00:00.000000","2025-05-02 04:00:00.000000","2025-05-02 07:00:00.000000","2025-05-02 10:00:00.000000","2025-05-02 13:00:00.000000","2025-05-02 16:00:00.000000","2025-05-02 19:00:00.000000","2025-05-02 22:00:00.000000","2025-05-03 01:00:00.000000","2025-05-03 04:00:00.000000","2025-05-03 07:00:00.000000","2025-05-03 10:00:00.000000","2025-05-03 13:00:00.000000","2025-05-03 16:00:00.000000","2025-05-03 19:00:00.000000","2025-05-03 22:00:00.000000","2025-05-04 01:00:00.000000","2025-05-04 04:00:00.000000","2025-05-04 07:00:00.000000","2025-05-04 10:00:00.000000","2025-05-04 13:00:00.000000","2025-05-04 16:00:00.000000","2025-05-04 19:00:00.000000","2025-05-04 22:00:00.000000","2025-05-05 01:00:00.000000","2025-05-05 04:00:00.000000","2025-05-05 07:00:00.000000","2025-05-05 10:00:00.000000","2025-05-05 13:00:00.000000","2025-05-05 16:00:00.000000","2025-05-05 19:00:00.000000","2025-05-05 22:00:00.000000","2025-05-06 01:00:00.000000","2025-05-06 04:00:00.000000","2025-05-06 07:00:00.000000","2025-05-06 10:00:00.000000","2025-05-06 13:00:00.000000","2025-05-06 16:00:00.000000","2025-05-06 19:00:00.000000","2025-05-06 22:00:00.000000","2025-05-07 01:00:00.000000","2025-05-07 04:00:00.000000","2025-05-07 07:00:00.000000","2025-05-07 10:00:00.000000","2025-05-07 13:00:00.000000","2025-05-07 16:00:00.000000","2025-05-07 19:00:00.000000","2025-05-07 22:00:00.000000","2025-05-08 01:00:00.000000","2025-05-08 04:00:00.000000","2025-05-08 07:00:00.000000","2025-05-08 10:00:00.000000","2025-05-08 13:00:00.000000","2025-05-08 16:00:00.000000","2025-05-08 19:00:00.000000","2025-05-08 22:00:00.000000","2025-05-09 01:00:00.000000","2025-05-09 04:00:00.000000","2025-05-09 07:00:00.000000","2025-05-09 10:00:00.000000","2025-05-09 13:00:00.000000","2025-05-09 16:00:00.000000","2025-05-09 19:00:00.000000","2025-05-09 22:00:00.000000","2025-05-10 01:00:00.000000","2025-05-10 04:00:00.000000","2025-05-10 07:00:00.000000","2025-05-10 10:00:00.000000","2025-05-10 13:00:00.000000","2025-05-10 16:00:00.000000","2025-05-10 19:00:00.000000","2025-05-10 22:00:00.000000","2025-05-11 01:00:00.000000","2025-05-11 04:00:00.000000","2025-05-11 07:00:00.000000","2025-05-11 10:00:00.000000","2025-05-11 13:00:00.000000","2025-05-11 16:00:00.000000","2025-05-11 19:00:00.000000","2025-05-11 22:00:00.000000","2025-05-12 01:00:00.000000","2025-05-12 04:00:00.000000","2025-05-12 07:00:00.000000","2025-05-12 10:00:00.000000","2025-05-12 13:00:00.000000","2025-05-12 16:00:00.000000","2025-05-12 19:00:00.000000","2025-05-13 01:00:00.000000","2025-05-13 04:00:00.000000","2025-05-13 07:00:00.000000","2025-05-13 10:00:00.000000","2025-05-13 13:00:00.000000","2025-05-13 16:00:00.000000","2025-05-13 19:00:00.000000","2025-05-13 22:00:00.000000","2025-05-14 01:00:00.000000","2025-05-14 04:00:00.000000","2025-05-14 07:00:00.000000","2025-05-14 10:00:00.000000","2025-05-14 13:00:00.000000","2025-05-14 16:00:00.000000","2025-05-14 19:00:00.000000","2025-05-14 22:00:00.000000","2025-05-15 01:00:00.000000","2025-05-15 04:00:00.000000","2025-05-15 07:00:00.000000","2025-05-15 10:00:00.000000","2025-05-15 13:00:00.000000","2025-05-15 16:00:00.000000","2025-05-15 19:00:00.000000","2025-05-15 22:00:00.000000","2025-05-16 01:00:00.000000","2025-05-16 04:00:00.000000","2025-05-16 07:00:00.000000","2025-05-16 10:00:00.000000","2025-05-16 13:00:00.000000","2025-05-16 16:00:00.000000","2025-05-16 19:00:00.000000","2025-05-16 22:00:00.000000","2025-05-17 01:00:00.000000","2025-05-17 04:00:00.000000","2025-05-17 07:00:00.000000","2025-05-17 10:00:00.000000","2025-05-17 13:00:00.000000","2025-05-17 16:00:00.000000","2025-05-17 19:00:00.000000","2025-05-17 22:00:00.000000","2025-05-18 01:00:00.000000","2025-05-18 04:00:00.000000","2025-05-18 07:00:00.000000","2025-05-18 10:00:00.000000","2025-05-18 13:00:00.000000","2025-05-18 16:00:00.000000","2025-05-18 19:00:00.000000","2025-05-18 22:00:00.000000","2025-05-19 01:00:00.000000","2025-05-19 04:00:00.000000","2025-05-19 07:00:00.000000","2025-05-19 10:00:00.000000","2025-05-19 13:00:00.000000","2025-05-19 16:00:00.000000","2025-05-19 19:00:00.000000","2025-05-19 22:00:00.000000","2025-05-20 01:00:00.000000","2025-05-20 07:00:00.000000","2025-05-20 10:00:00.000000","2025-05-20 13:00:00.000000","2025-05-20 16:00:00.000000","2025-05-20 19:00:00.000000","2025-05-20 22:00:00.000000","2025-05-21 01:00:00.000000","2025-05-21 04:00:00.000000","2025-05-21 07:00:00.000000","2025-05-21 10:00:00.000000","2025-05-21 13:00:00.000000","2025-05-21 16:00:00.000000","2025-05-21 19:00:00.000000","2025-05-21 22:00:00.000000","2025-05-22 01:00:00.000000","2025-05-22 04:00:00.000000","2025-05-22 07:00:00.000000","2025-05-22 10:00:00.000000","2025-05-22 13:00:00.000000","2025-05-22 16:00:00.000000","2025-05-22 19:00:00.000000","2025-05-22 22:00:00.000000","2025-05-23 01:00:00.000000","2025-05-23 04:00:00.000000","2025-05-23 07:00:00.000000","2025-05-23 10:00:00.000000","2025-05-23 13:00:00.000000","2025-05-23 16:00:00.000000","2025-05-23 19:00:00.000000","2025-05-23 22:00:00.000000","2025-05-24 01:00:00.000000","2025-05-24 04:00:00.000000","2025-05-24 07:00:00.000000","2025-05-24 10:00:00.000000","2025-05-24 13:00:00.000000","2025-05-24 16:00:00.000000","2025-05-24 19:00:00.000000","2025-05-24 22:00:00.000000","2025-05-25 01:00:00.000000","2025-05-25 04:00:00.000000","2025-05-25 07:00:00.000000","2025-05-25 10:00:00.000000","2025-05-25 13:00:00.000000","2025-05-25 16:00:00.000000","2025-05-25 19:00:00.000000","2025-05-25 22:00:00.000000","2025-05-26 01:00:00.000000","2025-05-26 04:00:00.000000","2025-05-26 07:00:00.000000","2025-05-26 10:00:00.000000","2025-05-26 13:00:00.000000","2025-05-26 16:00:00.000000","2025-05-26 19:00:00.000000","2025-05-26 22:00:00.000000","2025-05-27 01:00:00.000000","2025-05-27 04:00:00.000000","2025-05-27 07:00:00.000000","2025-05-27 10:00:00.000000","2025-05-27 13:00:00.000000","2025-05-27 16:00:00.000000","2025-05-27 19:00:00.000000","2025-05-27 22:00:00.000000","2025-05-28 01:00:00.000000","2025-05-28 04:00:00.000000","2025-05-28 07:00:00.000000","2025-05-28 10:00:00.000000","2025-05-28 13:00:00.000000","2025-05-28 16:00:00.000000","2025-05-28 19:00:00.000000","2025-05-28 22:00:00.000000","2025-05-29 01:00:00.000000","2025-05-29 04:00:00.000000"],"y":[12,18,21,21,17,14,13,12,11,15,18,19,16,13,13,12,11,15,17,19,15,11,9,8,8,16,21,22,18,14,13,12,12,17,19,19,16,13,11,9,9,15,18,19,16,13,11,9,9,15,20,22,18,15,14,14,13,21,26,28,23,20,19,16,15,19,22,22,19,15,13,12,12,19,29,30,24,21,20,19,19,25,30,32,26,22,19,18,17,20,24,23,21,18,15,13,13,18,26,28,23,19,18,17,17,22,27,28,23,19,16,15,14,23,29,29,25,20,18,17,17,24,29,22,17,15,15,16,23,28,29,24,22,20,20,19,23,27,25,18,15,13,12,12,17,21,20,16,14,13,13,14,17,19,19,17,14,12,11,11,16,22,23,19,15,13,13,15,21,26,26,21,19,18,18,16,20,24,22,19,17,16,15,15,17,19,19,17,15,14,14,14,15,18,18,16,14,13,12,12,16,19,18,16,15,13,12,12,16,18,17,14,13,12,11,10,14,18,17,14,11,9,7,7,13,17,17,14,11,9,7,7,14,20,20,15,11,9,8,8,16,21,21,15,12,11,11,11,17,23,23,17,15,15,14,14,18,23,25,21,19,17,16,15,19,25,25,21,18,16,15,15,19,20,19,14,11,10,9,9,13,17,17,13,10,8,6,5,14,19,19,15,11,9,7,7,14,20,21,15,11,9,9,9,17,23,23,17,14,13,12,11,18,23,22,16,11,10,10,15,21,22,16,13,11,10,9,16,19,18,15,13,12,11,9,14,18,18,14,11,9,7,6,14,19,19,15,12,11,10,10,13,13,13,10,9,7,7,7,11,14,14,10,7,5,3,2,9,14,14,10,7,4,1,11,18,18,11,7,5,4,4,11,16,15,12,9,7,6,5,11,16,17,14,12,10,10,10,13,16,17,13,11,11,11,10,14,18,18,15,13,12,10,9,13,17,18,15,13,13,12,12,16,21,20,14,12,11,10,9,12,15,15,13,11,11,10,10,13,14,14,13,12,11,11],"mode":"lines+markers","name":"1 Day Forecast","type":"scatter","marker":{"color":"rgba(44,160,44,0.6)","line":{"color":"rgba(44,160,44,1)"}},"error_y":{"color":"rgba(44,160,44,0.6)"},"error_x":{"color":"rgba(44,160,44,0.6)"},"line":{"color":"rgba(44,160,44,0.6)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+
+Let’s look at some statistics across all of the weather stations: the mean error, the mean absolutle error, and the standard deviation of the mean error.
+
+<div id="vhsnhvyrqe" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#vhsnhvyrqe table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#hjmitruspz thead, #hjmitruspz tbody, #hjmitruspz tfoot, #hjmitruspz tr, #hjmitruspz td, #hjmitruspz th {
+&#10;#vhsnhvyrqe thead, #vhsnhvyrqe tbody, #vhsnhvyrqe tfoot, #vhsnhvyrqe tr, #vhsnhvyrqe td, #vhsnhvyrqe th {
   border-style: none;
 }
-&#10;#hjmitruspz p {
+&#10;#vhsnhvyrqe p {
   margin: 0;
   padding: 0;
 }
-&#10;#hjmitruspz .gt_table {
+&#10;#vhsnhvyrqe .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -624,11 +101,11 @@ forecast_lagged |>
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_caption {
+&#10;#vhsnhvyrqe .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#hjmitruspz .gt_title {
+&#10;#vhsnhvyrqe .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -639,7 +116,7 @@ forecast_lagged |>
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#hjmitruspz .gt_subtitle {
+&#10;#vhsnhvyrqe .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -650,7 +127,7 @@ forecast_lagged |>
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#hjmitruspz .gt_heading {
+&#10;#vhsnhvyrqe .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -661,12 +138,12 @@ forecast_lagged |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_bottom_border {
+&#10;#vhsnhvyrqe .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_col_headings {
+&#10;#vhsnhvyrqe .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -680,7 +157,7 @@ forecast_lagged |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_col_heading {
+&#10;#vhsnhvyrqe .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -699,7 +176,7 @@ forecast_lagged |>
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#hjmitruspz .gt_column_spanner_outer {
+&#10;#vhsnhvyrqe .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -710,13 +187,13 @@ forecast_lagged |>
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#hjmitruspz .gt_column_spanner_outer:first-child {
+&#10;#vhsnhvyrqe .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#hjmitruspz .gt_column_spanner_outer:last-child {
+&#10;#vhsnhvyrqe .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#hjmitruspz .gt_column_spanner {
+&#10;#vhsnhvyrqe .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -727,10 +204,10 @@ forecast_lagged |>
   display: inline-block;
   width: 100%;
 }
-&#10;#hjmitruspz .gt_spanner_row {
+&#10;#vhsnhvyrqe .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#hjmitruspz .gt_group_heading {
+&#10;#vhsnhvyrqe .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -755,7 +232,7 @@ forecast_lagged |>
   vertical-align: middle;
   text-align: left;
 }
-&#10;#hjmitruspz .gt_empty_group_heading {
+&#10;#vhsnhvyrqe .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -769,13 +246,13 @@ forecast_lagged |>
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#hjmitruspz .gt_from_md > :first-child {
+&#10;#vhsnhvyrqe .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#hjmitruspz .gt_from_md > :last-child {
+&#10;#vhsnhvyrqe .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#hjmitruspz .gt_row {
+&#10;#vhsnhvyrqe .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -793,7 +270,7 @@ forecast_lagged |>
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#hjmitruspz .gt_stub {
+&#10;#vhsnhvyrqe .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -805,7 +282,7 @@ forecast_lagged |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#hjmitruspz .gt_stub_row_group {
+&#10;#vhsnhvyrqe .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -818,13 +295,13 @@ forecast_lagged |>
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#hjmitruspz .gt_row_group_first td {
+&#10;#vhsnhvyrqe .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#hjmitruspz .gt_row_group_first th {
+&#10;#vhsnhvyrqe .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#hjmitruspz .gt_summary_row {
+&#10;#vhsnhvyrqe .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -833,14 +310,14 @@ forecast_lagged |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#hjmitruspz .gt_first_summary_row {
+&#10;#vhsnhvyrqe .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_first_summary_row.thick {
+&#10;#vhsnhvyrqe .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#hjmitruspz .gt_last_summary_row {
+&#10;#vhsnhvyrqe .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -849,7 +326,7 @@ forecast_lagged |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_grand_summary_row {
+&#10;#vhsnhvyrqe .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -858,7 +335,7 @@ forecast_lagged |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#hjmitruspz .gt_first_grand_summary_row {
+&#10;#vhsnhvyrqe .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -867,7 +344,7 @@ forecast_lagged |>
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_last_grand_summary_row_top {
+&#10;#vhsnhvyrqe .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -876,10 +353,10 @@ forecast_lagged |>
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_striped {
+&#10;#vhsnhvyrqe .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#hjmitruspz .gt_table_body {
+&#10;#vhsnhvyrqe .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -887,7 +364,7 @@ forecast_lagged |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_footnotes {
+&#10;#vhsnhvyrqe .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -900,7 +377,7 @@ forecast_lagged |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_footnote {
+&#10;#vhsnhvyrqe .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -908,7 +385,7 @@ forecast_lagged |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#hjmitruspz .gt_sourcenotes {
+&#10;#vhsnhvyrqe .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -921,180 +398,136 @@ forecast_lagged |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#hjmitruspz .gt_sourcenote {
+&#10;#vhsnhvyrqe .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#hjmitruspz .gt_left {
+&#10;#vhsnhvyrqe .gt_left {
   text-align: left;
 }
-&#10;#hjmitruspz .gt_center {
+&#10;#vhsnhvyrqe .gt_center {
   text-align: center;
 }
-&#10;#hjmitruspz .gt_right {
+&#10;#vhsnhvyrqe .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#hjmitruspz .gt_font_normal {
+&#10;#vhsnhvyrqe .gt_font_normal {
   font-weight: normal;
 }
-&#10;#hjmitruspz .gt_font_bold {
+&#10;#vhsnhvyrqe .gt_font_bold {
   font-weight: bold;
 }
-&#10;#hjmitruspz .gt_font_italic {
+&#10;#vhsnhvyrqe .gt_font_italic {
   font-style: italic;
 }
-&#10;#hjmitruspz .gt_super {
+&#10;#vhsnhvyrqe .gt_super {
   font-size: 65%;
 }
-&#10;#hjmitruspz .gt_footnote_marks {
+&#10;#vhsnhvyrqe .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#hjmitruspz .gt_asterisk {
+&#10;#vhsnhvyrqe .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#hjmitruspz .gt_indent_1 {
+&#10;#vhsnhvyrqe .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#hjmitruspz .gt_indent_2 {
+&#10;#vhsnhvyrqe .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#hjmitruspz .gt_indent_3 {
+&#10;#vhsnhvyrqe .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#hjmitruspz .gt_indent_4 {
+&#10;#vhsnhvyrqe .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#hjmitruspz .gt_indent_5 {
+&#10;#vhsnhvyrqe .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#hjmitruspz .katex-display {
+&#10;#vhsnhvyrqe .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#hjmitruspz div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#vhsnhvyrqe div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
 <table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
   <thead>
     <tr class="gt_col_headings">
-      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="forecast_period">Forecast Period</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean_forecast_error">Forecast Error Mean</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd_forecast_error_round">Forecast Error Standard Deviation</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="forecast_duration">Forecast Duration</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean_absolute_error">Mean Absolute Error</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean_forecast_error">Mean Error</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd_forecast_error">Standard Deviation of Error</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="excess_kurtosis">Excess Kurtosis</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="n">n</th>
     </tr>
   </thead>
   <tbody class="gt_table_body">
-    <tr><td headers="forecast_period" class="gt_row gt_center">86400s (~1 days)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">0.22832047</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">1.743535</td></tr>
-    <tr><td headers="forecast_period" class="gt_row gt_center">172800s (~2 days)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">0.22254116</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">1.812378</td></tr>
-    <tr><td headers="forecast_period" class="gt_row gt_center">259200s (~3 days)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">0.20565877</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">1.907875</td></tr>
-    <tr><td headers="forecast_period" class="gt_row gt_center">345600s (~4 days)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">0.20659782</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">2.018509</td></tr>
-    <tr><td headers="forecast_period" class="gt_row gt_center">432000s (~5 days)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">0.04902166</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">2.132341</td></tr>
-    <tr><td headers="forecast_period" class="gt_row gt_center">518400s (~6 days)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">-0.06330583</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">2.236941</td></tr>
-    <tr><td headers="forecast_period" class="gt_row gt_center">604800s (~1 weeks)</td>
-<td headers="mean_forecast_error" class="gt_row gt_right">0.48686348</td>
-<td headers="sd_forecast_error_round" class="gt_row gt_right">2.238612</td></tr>
+    <tr><td headers="forecast_duration" class="gt_row gt_center">86400s (~1 days)</td>
+<td headers="mean_absolute_error" class="gt_row gt_right">1.335540</td>
+<td headers="mean_forecast_error" class="gt_row gt_right">0.12859402</td>
+<td headers="sd_forecast_error" class="gt_row gt_right">1.732229</td>
+<td headers="excess_kurtosis" class="gt_row gt_right">0.9837186</td>
+<td headers="n" class="gt_row gt_right">234014</td></tr>
+    <tr><td headers="forecast_duration" class="gt_row gt_center">172800s (~2 days)</td>
+<td headers="mean_absolute_error" class="gt_row gt_right">1.397434</td>
+<td headers="mean_forecast_error" class="gt_row gt_right">0.15273371</td>
+<td headers="sd_forecast_error" class="gt_row gt_right">1.814117</td>
+<td headers="excess_kurtosis" class="gt_row gt_right">1.0820789</td>
+<td headers="n" class="gt_row gt_right">229834</td></tr>
+    <tr><td headers="forecast_duration" class="gt_row gt_center">259200s (~3 days)</td>
+<td headers="mean_absolute_error" class="gt_row gt_right">1.502503</td>
+<td headers="mean_forecast_error" class="gt_row gt_right">0.14779277</td>
+<td headers="sd_forecast_error" class="gt_row gt_right">1.960301</td>
+<td headers="excess_kurtosis" class="gt_row gt_right">1.1615519</td>
+<td headers="n" class="gt_row gt_right">225645</td></tr>
+    <tr><td headers="forecast_duration" class="gt_row gt_center">345600s (~4 days)</td>
+<td headers="mean_absolute_error" class="gt_row gt_right">1.623981</td>
+<td headers="mean_forecast_error" class="gt_row gt_right">0.12161185</td>
+<td headers="sd_forecast_error" class="gt_row gt_right">2.116116</td>
+<td headers="excess_kurtosis" class="gt_row gt_right">1.0189754</td>
+<td headers="n" class="gt_row gt_right">221175</td></tr>
+    <tr><td headers="forecast_duration" class="gt_row gt_center">432000s (~5 days)</td>
+<td headers="mean_absolute_error" class="gt_row gt_right">1.712168</td>
+<td headers="mean_forecast_error" class="gt_row gt_right">0.07361173</td>
+<td headers="sd_forecast_error" class="gt_row gt_right">2.229667</td>
+<td headers="excess_kurtosis" class="gt_row gt_right">0.9250834</td>
+<td headers="n" class="gt_row gt_right">216979</td></tr>
+    <tr><td headers="forecast_duration" class="gt_row gt_center">518400s (~6 days)</td>
+<td headers="mean_absolute_error" class="gt_row gt_right">1.884708</td>
+<td headers="mean_forecast_error" class="gt_row gt_right">0.08595580</td>
+<td headers="sd_forecast_error" class="gt_row gt_right">2.456714</td>
+<td headers="excess_kurtosis" class="gt_row gt_right">0.8411678</td>
+<td headers="n" class="gt_row gt_right">211461</td></tr>
   </tbody>
   &#10;  
 </table>
 </div>
 
-``` r
-forecast_lagged |>
-    ggplot() +
-    geom_histogram(aes(temp_diff, after_stat(density), fill = as_factor(forecast_period)), binwidth = .2) +
-    facet_wrap(vars(forecast_period)) +
-    labs(
-        fill = "Forecast Period\n(seconds)"
-    )
-```
+Looking at the mean error first, which doesn’t tell us about the accuracy (as negative and positive errors cancel each other out), but more about the bias in the model. It’s showing as that across all forecasts there’s a slight bias towards over-estimating the temperature, but only by a tenth of a degree or so. The absolute error of is goes up from 1.33 degrees a day out, so 1.88 degrees six days out. The standard deviation increasing tells us that the errors are more spread out as well. None of this is unexpected.
 
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" />
-
-``` r
-forecast_lagged |>
-    ggplot(aes(sample = temp_diff, group = forecast_period)) +
-    geom_qq(size = .1, distribution = stats::qnorm) +
-    geom_qq_line(distribution = stats::qnorm) +
-    facet_wrap(vars(forecast_period))
-```
-
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" />
-
-``` r
-wmo_sd <-
-    forecast_lagged |>
-    group_by(wmo, forecast_period) |>
-    summarise(forecast_accuracy_sd = sd(temp_diff), .groups = 'drop') |>
-    left_join(weather_stations, by = 'wmo')
-    
-
-aus |> 
- ggplot() +
-    # geom_sf() +
-    geom_point(data = wmo_sd |> filter(forecast_period == 518400), aes(x = lon, y = lat, colour = forecast_accuracy_sd), size = .4) +
-    labs(
-        x = '',
-        y = ''
-    )
-```
+A histogram of the errors shows their distribution and how that changes over time. I’ve overlaid a Gaussian with a fix mean of 0 and standard deviation of 2 to act as point of comparison:
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" />
-
-``` r
-wmo_sd |>
-    filter(forecast_period == days(7)) |> 
-    ggplot() +
-    geom_point(aes(lat, forecast_accuracy_sd, colour = state))
-```
+This shows the mean error slightly shifting to the right, the distribution spreading out as the standard deviation increases, and that the distribution isn’t quite normal, with a kurtosis of ~4 for all of the forecasts meaning heavier tails. A q-in-q plot is a better visualisation of this, showing that the forecast error is normal for the first two standard deviations.
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" />
-
-``` r
-temp_data |>
-    group_by(wmo) |>
-    summarise(temp_var = var(temperature, na.rm = TRUE)) |>
-    left_join(wmo_sd, by = 'wmo') |>  
-    filter(forecast_period == 86400*6) |> 
-    ggplot() +
-    geom_point(aes(temp_var, forecast_accuracy_sd, colour = state))
-```
+Let’s take a look at the mean absolute error over all of the distinct forecast durations, broken up by state:
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="672" />
-\# Best and Worse
-
-``` r
-wmo_sd |>
-    filter(forecast_period == days(7)) |>
-    slice_max(forecast_accuracy_sd, n = 4) |>
-    left_join(forecast_lagged, by = c('wmo', 'forecast_period')) |> 
-    ggplot() +
-    geom_point(aes(forecast_datetime_local, temperature_rounded), shape = 2, size = .4) +
-    geom_line(aes(forecast_datetime_local, temperature_rounded), alpha = .3) +
-    geom_point(aes(forecast_datetime_local, forecast_temp, colour = location.x), alpha = .6, size = .4) +
-    geom_line(aes(forecast_datetime_local, forecast_temp, colour = location.x), alpha = .6) +
-    facet_wrap(~location.x) +
-    labs(
-        colour = "Forecast Temp"
-    )
-```
+There’s two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. We’ll put a pin in that for the moment, and look at the apparent cyclical nature of the forecast accuracy. I initially thought this was day/night propery, but of course the forecast duration has no day or night property (e.g. a 3 day forecast has )
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" />
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" />
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="672" />
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-19-1.png" width="672" />
