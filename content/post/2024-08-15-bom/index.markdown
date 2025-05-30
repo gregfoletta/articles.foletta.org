@@ -1,8 +1,8 @@
 ---
-title: “They’re the BOM: Assessing the Bureau’s Forecast Accuracy”
-author: ‘Greg Foletta’
-date: ‘2025-05-04’
-categories: \[R Forecasting\]
+title: 'They’re the BOM: Assessing the Bureau’s Forecast Accuracy'
+author: 'Greg Foletta'
+date: '2025-05-04'
+categories: [R, Forecasting]
 ---
 
 In this article I’m going to take a look at how accurate Australia’s Bureau of Metorology (BOM) is at forcasting temperature. But before I start a quick note.
