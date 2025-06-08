@@ -1,5 +1,4 @@
---
--
+---
 title: "They're the BOM: Assessing the Bureau's Forecast Accuracy"
 author: 'Greg Foletta'
 date: '2025-05-04'
@@ -28,6 +27,19 @@ library(plotly)
 
 library(rnaturalearth)
 library(rnaturalearthdata)
+
+scale_colour_brewer_d <- function(..., palette = "Dark2") {
+  scale_colour_brewer(..., palette = palette )
+}
+
+scale_fill_brewer_d <- function(..., palette = "Dark2") {
+  scale_fill_brewer(..., palette = palette)
+}
+
+options(
+  ggplot2.discrete.colour = scale_colour_brewer_d,
+  ggplot2.discrete.fill = scale_fill_brewer_d
+)
 ```
 
 # Weather Stations
@@ -45,8 +57,13 @@ Number one was easy, as the BOM provides a [list of weather stattions](http://ww
 
 ```{r include=FALSE}
 temp_data <- readRDS('bom_temperature.Rdata') |> drop_na(temperature)
-forecast_distinct <- readRDS('bom_forecasts_distinct.Rdata')
-forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata')
+
+forecast_distinct <- 
+    readRDS('bom_forecasts_change.Rdata') |> 
+    drop_na(temperature) |>
+    filter(forecast_duration > 0)
+
+forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata') |> drop_na(temperature)
 
 weather_stations <- 
     read_csv('weather_stations_current_data.csv', show_col_types = FALSE) |> 
@@ -140,7 +157,8 @@ temp_data |>
         x = 'Date/Time',
         y = 'Temperature (°C)',
         colour = 'State'
-    )
+    ) +
+    facet_wrap(vars(state))
 ```
 That's a total of `r temp_data |> nrow()` million temperature readings over `r temp_data |> summarise(duration = last(request_datetime_utc - first(request_datetime_utc))) |> pull(duration) |> as.duration()`. It's not the the cleanest visualisation, but gives you a sense of the data we're working with, and as well the breadth of temperature difference in this vast country. If you squint you should be able to a general downward trend of the temperature as we move through Autumn towards Winter.
 
@@ -184,32 +202,17 @@ To prune this data back, we carve it up into two sub-datasets:
 
 The first set shows us how often the BOM updates their models, and the second we'll use to assess the accuracy of forecasts at certain durations prior to the forecast date and& time.  
 
-```{r echo=FALSE}
+```{r}
 forecast_distinct |>
-    filter(!is.na(temperature)) |>
-    count(datetime = floor_date(request_datetime_utc, '10 minutes')) |>
-    slice_tail(n = -1) |>  
     ggplot() +
-    geom_point(aes(datetime, n)) 
-```
-```{r cache = TRUE}
-forecast_change <-
-forecast_distinct |>
-    select(wmo, forecast_datetime_local, request_datetime_utc, forecast_duration) |> 
-    group_by(wmo, forecast_datetime_local) |> 
-    mutate(
-        request_datetime_utc_floored = floor_date(request_datetime_utc, '10 minutes'),
-        forecast_change_time = request_datetime_utc_floored - lag(request_datetime_utc_floored)
+    geom_histogram(aes(hour(request_datetime_local_floored)), binwidth = 1) +
+    scale_y_continuous(breaks = scales::breaks_pretty()) +
+    labs(
+        x = "Hour of Day",
+        y = "Count"
     )
 ```
 
-```{r}
-forecast_change |>
-    drop_na(forecast_change_time) |> 
-    ggplot() +
-    geom_histogram(aes(forecast_change_time), binwidth = 3600*4) +
-    scale_x_time()
-```
 
 # Forecast Accuracy
 
@@ -220,7 +223,6 @@ To start, here's a view of both the 1 day and 6 day forecast overlaid across the
 ```{r}
 dat <- 
 forecast_lagged |>
-    drop_na(temperature) |> 
     filter(wmo == 95866) 
 
 plot_ly(data = dat |> filter(forecast_duration == days(6)) , x = ~forecast_datetime_local, y = ~temperature, type = 'scatter', name = 'Recorded Temperature', mode = 'lines+markers') |>
@@ -233,28 +235,29 @@ add_trace(data = dat |> filter(forecast_duration == days(1)) , y = ~forecast_tem
 ```{r echo=FALSE}
 forecast_accuracy <- function(forecasts) {
     forecasts |> 
-    drop_na(temperature) |> 
     mutate(temp_diff = forecast_temp - temperature)
 }
 
 forecast_statistics <- function(forecasts) {
     forecasts |> 
-    drop_na(temperature) |> 
-    group_by(forecast_duration) |>
     summarise(
         mean_absolute_error = mean(abs(temp_diff)),
         mean_forecast_error = mean(temp_diff),
         sd_forecast_error = sd(temp_diff),
-        excess_kurtosis = mean( ( (temp_diff - mean(temp_diff)) / sd(temp_diff))^4 ) - 3,
-        n = n()
+        nine_five_quantile = list(quantile(temp_diff, probs = c(.025, .975))),
+        #excess_kurtosis = mean( ( (temp_diff - mean(temp_diff)) / sd(temp_diff))^4 ) - 3,
+        #n = n()
+        .groups = 'drop'
     ) 
 }
 
 forecast_lagged <- forecast_lagged |> forecast_accuracy()
 forecast_distinct <- forecast_distinct |> forecast_accuracy()
 
-forecast_distinct_summary <- forecast_distinct |> forecast_statistics()
-forecast_lagged_summary  <- forecast_lagged |> forecast_statistics()
+forecast_lagged_summary  <- 
+    forecast_lagged |> 
+    group_by(forecast_duration) |>
+    forecast_statistics()
 ```
 
 Let's look at some statistics across all of the weather stations: the mean error, the mean absolutle error, and the standard deviation of the mean error.
@@ -268,7 +271,7 @@ forecast_lagged_summary |>
         mean_forecast_error = "Mean Error",
         mean_absolute_error = "Mean Absolute Error",
         sd_forecast_error = "Standard Deviation of Error",
-        excess_kurtosis = "Excess Kurtosis"
+        nine_five_quantile = "95% Quantile"
     )
 ```
 
@@ -296,31 +299,30 @@ forecast_lagged |>
     facet_wrap(vars(forecast_duration)) +
     scale_x_continuous(breaks = scales::breaks_pretty())
 ```
-Let's take a look at the mean absolute error over all of the distinct forecast durations, broken up by state:
+Let's take a look at the mean absolute error over all of the distinct forecast duration, broken up by state:
 
 ```{r}
 forecast_distinct |>
-    drop_na(temperature) |> 
-    group_by(forecast_duration, state) |>
-    summarise(
-        mean_absolute_error = mean(abs(temp_diff)),
-        mean_forecast_error = mean(temp_diff),
-        sd_forecast_error = sd(temp_diff),
-        n = n(),
-        .groups = 'drop'
-    ) |>
+    group_by(forecast_duration, state) |> 
+    forecast_statistics() |> 
     ggplot() +
     geom_point(aes(forecast_duration, mean_absolute_error, colour = state), size = .5, alpha = .5) +
     facet_wrap(~state) +
-    scale_x_continuous()
+    scale_x_continuous(breaks = NULL) 
 ```
 There's two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. We'll put a pin in that for the moment, and look at the apparent cyclical nature of the forecast accuracy. I initially thought this was day/night propery, but of course the forecast duration has no day or night property (e.g. a 3 day forecast has )
 
 ```{r}
+forecast_distinct <-
+    forecast_distinct |>
+    mutate(night = hour(request_datetime_local_floored) >= 19 | hour(request_datetime_local_floored) <= 7) 
+```
+
+
+```{r}
 forecast_distinct |>
+    filter(forecast_duration > 0) |> 
     filter(state == 'VIC') |> 
-    mutate(night = hour(forecast_datetime_local) > 19 | hour(forecast_datetime_local) < 7) |> 
-    drop_na(temperature) |> 
     group_by(forecast_duration, state, night) |>
     summarise(
         mean_absolute_error = mean(abs(temp_diff)),
@@ -331,52 +333,34 @@ forecast_distinct |>
     ) |>
     ggplot() +
     geom_point(aes(forecast_duration, mean_absolute_error, colour = night), size = 1, alpha = .5) +
-    scale_x_continuous()
+    scale_x_time() +
+    facet_grid(vars(night))
+```
+```{r}
+forecast_distinct |>
+    filter(state == 'VIC') |> 
+    group_by(forecast_duration, state, night) |>
+    forecast_statistics() |> 
+    ggplot() +
+    geom_histogram(aes(mean_absolute_error, fill = night), binwidth = .2) +
+    facet_wrap(~night)
 ```
 
+# Jaggedness
 
 ```{r}
-wmo_sd <-
-    forecast_lagged |>
-    drop_na(temperature) |> 
-    group_by(wmo, forecast_duration) |>
+forecast_distinct |>
+    group_by(wmo, state) |>
     summarise(
-        mean_absolute_error = mean(abs(temp_diff)),
-        mean_forecast_error = mean(temp_diff),
-        sd_forecast_error = sd(temp_diff),
-        n = n(),
+        mean_abs_error = mean(abs(temp_diff)),
+        jaggedness = sum(abs(diff(temperature)))/n(),
         .groups = 'drop'
-    ) |> 
-    left_join(weather_stations, by = 'wmo') |> 
-    ungroup() 
-
-aus |> 
- ggplot() +
-    geom_sf() +
-    geom_point(data = wmo_sd |> filter(forecast_duration == days(6)), aes(x = lon, y = lat, colour = mean_absolute_error), size = .4) +
-    coord_sf(xlim = c(110, 155), ylim = -c(10, 45)) +
-    labs(
-        title = 'WMO Weather Stations - Mean 7-Day Forecast Standard Deviation',
-        x = 'Lon',
-        y = 'Lat',
-        colour = 'Mean Error'
-    )
-    
+    ) |>
+    ggplot() +
+    geom_point(aes(jaggedness, mean_abs_error, colour = state)) 
 ```
 
 ```{r}
-wmo_sd |> filter(forecast_duration == 86400 * 6) |>
-    ggplot() +
-    geom_violin(aes(state, mean_absolute_error, fill = state, colour = state))
+ 
 ```
-```{r}
-temp_data |>
-    group_by(wmo) |>
-    summarise(temp_var = var(temperature, na.rm = TRUE)) |>
-    left_join(wmo_sd, by = 'wmo') |>  
-    filter(forecast_duration == 86400*6) |> 
-    ggplot() +
-    geom_point(aes(temp_var, sd_forecast_error, colour = state))
-```
-
 
