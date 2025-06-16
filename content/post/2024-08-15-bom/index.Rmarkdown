@@ -24,6 +24,7 @@ library(tictoc)
 library(here)
 library(gt)
 library(plotly)
+library(gganimate)
 
 library(rnaturalearth)
 library(rnaturalearthdata)
@@ -289,7 +290,9 @@ forecast_lagged |>
         fill = "Forecast Duration\n(seconds)"
     )
 ```
-This shows the mean error slightly shifting to the right, the distribution spreading out as the standard deviation increases, and that the distribution isn't quite normal, with a kurtosis of ~4 for all of the forecasts meaning heavier tails. A q-in-q plot is a better visualisation of this, showing that the forecast error is normal for the first two standard deviations.
+This shows the mean error slightly shifting to the right and the distribution spreading out as the standard deviation increases. The distribution looks *sort of* normal, and for the first two standard deviations it tracks really well. You'll notice this with the table above, where the mean +- 2 x std.dev lines up well with the 95% quartiles.
+
+But we can't assume it's normal across the board. This is best visualised with a quantile-quantile (QQ) plot, which shows that these distrbutions have much fatter tails than a normal.
 
 ```{r echo=FALSE}
 forecast_lagged |>
@@ -299,65 +302,78 @@ forecast_lagged |>
     facet_wrap(vars(forecast_duration)) +
     scale_x_continuous(breaks = scales::breaks_pretty())
 ```
-Let's take a look at the mean absolute error over all of the distinct forecast duration, broken up by state:
-
+Instead of looking at whole days between the forecast and the recrorded temperature, let's use our look at the data set which contains all of the changed forecasts over time, therefore showing a wide spectrum of times between when the forecast was made, and the actual recorded temperature.
 ```{r}
 forecast_distinct |>
     group_by(forecast_duration, state) |> 
     forecast_statistics() |> 
     ggplot() +
     geom_point(aes(forecast_duration, mean_absolute_error, colour = state), size = .5, alpha = .5) +
-    facet_wrap(~state) +
-    scale_x_continuous(breaks = NULL) 
+    facet_grid(vars(state)) +
+    scale_x_time() +
+    labs(
+        title = 'Mean Absolute Forecast Error by Forecast Duration',
+        x = 'Hours',
+        y = 'Mean Absolute Error',
+        colour = 'State'
+    )
 ```
-There's two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. We'll put a pin in that for the moment, and look at the apparent cyclical nature of the forecast accuracy. I initially thought this was day/night propery, but of course the forecast duration has no day or night property (e.g. a 3 day forecast has )
+There's two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. The other is that there appears to be a cyclical nature to the forecast error. Setting aside what I'll call the 'southern state' issue, we'll investigate the cyclical nature.
+
+Straight away this looks to be a difference in forecast error based on whether it's day or night. I wouldn't have thought that this kind of bias would have come through in the forecast durations. But if you recall the histogram above that showed when the BOM updated its models, this wasn't uniformly distributed. Rather, most of the changes to forecasts ocurred between 2pm and 6pm. Therefore the forcast duration - the difference between the forecast change and the forecast time - will be 'tethered' from this time and the day/night cycle will show in the forecast durations.
+
+We'll roughly code the forecast time's day phase as 'night' based on whether the time is after 7pm and before 7am, and 'day' for all others. This makes sense for the time period of the data. Now we can look at density plot of the forecast error between the two phases.
 
 ```{r}
 forecast_distinct <-
     forecast_distinct |>
-    mutate(night = hour(request_datetime_local_floored) >= 19 | hour(request_datetime_local_floored) <= 7) 
+    mutate(day_phase = if_else( hour(temp_datetime) >= 19 | hour(temp_datetime) <= 7, 'night', 'day'))
 ```
 
 
 ```{r}
 forecast_distinct |>
-    filter(forecast_duration > 0) |> 
     filter(state == 'VIC') |> 
-    group_by(forecast_duration, state, night) |>
-    summarise(
-        mean_absolute_error = mean(abs(temp_diff)),
-        mean_forecast_error = mean(temp_diff),
-        sd_forecast_error = sd(temp_diff),
-        n = n(),
-        .groups = 'drop'
-    ) |>
+    group_by(forecast_duration, state, day_phase) |>
     ggplot() +
-    geom_point(aes(forecast_duration, mean_absolute_error, colour = night), size = 1, alpha = .5) +
-    scale_x_time() +
-    facet_grid(vars(night))
+    geom_histogram(aes(temp_diff, after_stat(density), fill = day_phase), binwidth = .2) +
+    facet_wrap(~day_phase) +
+    labs(
+        title = "Victoria - Day Phase Forecast Error",
+        subtitle = "Histogram of Density, Night Defined as Between 19:00-7:00",
+        x = "Forecast Error",
+        y = "Density",
+        colour = "Day Phase"
+    ) +
+    theme(legend.position = "none")
 ```
-```{r}
-forecast_distinct |>
-    filter(state == 'VIC') |> 
-    group_by(forecast_duration, state, night) |>
-    forecast_statistics() |> 
-    ggplot() +
-    geom_histogram(aes(mean_absolute_error, fill = night), binwidth = .2) +
-    facet_wrap(~night)
-```
+The daytime forecasts
 
 # Jaggedness
 
 ```{r}
-forecast_distinct |>
+temp_data |> 
     group_by(wmo, state) |>
     summarise(
-        mean_abs_error = mean(abs(temp_diff)),
         jaggedness = sum(abs(diff(temperature)))/n(),
         .groups = 'drop'
     ) |>
+    right_join(forecast_lagged, by = c('wmo', 'state')) |> 
+    group_by(wmo, state, jaggedness, forecast_duration) |>
+    summarise(
+        mean_absolute_error = mean(abs(temp_diff)),
+        .groups = 'drop'
+    ) |>
     ggplot() +
-    geom_point(aes(jaggedness, mean_abs_error, colour = state)) 
+    geom_point(aes(jaggedness, mean_absolute_error, colour = state), size = 2) +
+    transition_states(forecast_duration, transition_length = 2, state_length = 1) +
+    ease_aes('linear') +
+    labs(
+        title = 'Temperature Jaggedness versus Forecast Accuracy',
+        subtitle = "Forecast Duration: {closest_state}",
+        x = 'Temperature Jaggedness',
+        y = 'Forecast Error'
+    )
 ```
 
 ```{r}
