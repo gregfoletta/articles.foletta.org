@@ -1,8 +1,8 @@
 ---
-title: "They're the BOM: Assessing the Bureau's Forecast Accuracy"
+title: "BOM's On Target: Assessing the Beaureau's Forecast Accuracy"
 author: 'Greg Foletta'
-date: '2025-05-04'
-categories: [R Forecasting]
+date: '2025-06-14'
+categories: [R Forecasting Weather]
 ---
 
 In this article I'm going to take a look at how accurate Australia's Bureau of Metorology (BOM) is at forcasting temperature. But before I start a quick note.
@@ -25,6 +25,8 @@ library(here)
 library(gt)
 library(plotly)
 library(gganimate)
+library(cmdstanr)
+library(tidybayes)
 
 library(rnaturalearth)
 library(rnaturalearthdata)
@@ -64,7 +66,14 @@ forecast_distinct <-
     drop_na(temperature) |>
     filter(forecast_duration > 0)
 
-forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata') |> drop_na(temperature)
+forecast_mapping <-
+  tibble(
+    forecast_duration = 60*60*24*c(1:6),
+    forecast_duration_names = as_factor(glue_data(list(a = 1:6), "{a} day"))
+)
+forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata') |> 
+  drop_na(temperature) |>
+  left_join(forecast_mapping, by = 'forecast_duration')
 
 weather_stations <- 
     read_csv('weather_stations_current_data.csv', show_col_types = FALSE) |> 
@@ -113,7 +122,7 @@ aus |>
     ggplot() +
     geom_sf() +
     geom_point(data = weather_stations, aes(x = lon, y = lat, colour = state), size = .2) +
-    coord_sf(xlim = c(110, 155), ylim = -c(10, 45)) +
+    coord_sf(xlim = c(114, 153), ylim = -c(11, 43)) +
     labs(
         title = 'WMO Weather Station Locations in Australia',
         x = 'Lon',
@@ -283,11 +292,16 @@ A histogram of the errors shows their distribution and how that changes over tim
 ```{r echo=FALSE}
 forecast_lagged |>
     ggplot() +
-    geom_histogram(aes(temp_diff, after_stat(density), fill = as_factor(forecast_duration)), binwidth = .1) +
+    geom_histogram(aes(temp_diff, after_stat(density), fill = forecast_duration_names), binwidth = .1) +
     geom_function(fun = dnorm, args = list(mean = 0, sd = 2), alpha = .5) +
-    facet_wrap(vars(forecast_duration)) +
+    facet_wrap(vars(forecast_duration_names)) +
     labs(
-        fill = "Forecast Duration\n(seconds)"
+        fill = "Forecast Duration"
+    ) +
+    theme(legend.position = 'none') +
+    labs(
+      x = 'Forecast Error',
+      y = 'Density'
     )
 ```
 This shows the mean error slightly shifting to the right and the distribution spreading out as the standard deviation increases. The distribution looks *sort of* normal, and for the first two standard deviations it tracks really well. You'll notice this with the table above, where the mean +- 2 x std.dev lines up well with the 95% quartiles.
@@ -299,7 +313,7 @@ forecast_lagged |>
     ggplot(aes(sample = temp_diff, group = forecast_duration)) +
     geom_qq(size = .1, distribution = stats::qnorm) +
     geom_qq_line(distribution = stats::qnorm) +
-    facet_wrap(vars(forecast_duration)) +
+    facet_wrap(vars(forecast_duration_names)) +
     scale_x_continuous(breaks = scales::breaks_pretty())
 ```
 Instead of looking at whole days between the forecast and the recrorded temperature, let's use our look at the data set which contains all of the changed forecasts over time, therefore showing a wide spectrum of times between when the forecast was made, and the actual recorded temperature.
@@ -352,31 +366,74 @@ The daytime forecasts
 # Jaggedness
 
 ```{r}
-temp_data |> 
+jagged_data <-
+    temp_data |> 
     group_by(wmo, state) |>
     summarise(
         jaggedness = sum(abs(diff(temperature)))/n(),
         .groups = 'drop'
     ) |>
     right_join(forecast_lagged, by = c('wmo', 'state')) |> 
-    group_by(wmo, state, jaggedness, forecast_duration) |>
+    group_by(wmo, state, jaggedness, forecast_duration_names) |>
     summarise(
         mean_absolute_error = mean(abs(temp_diff)),
         .groups = 'drop'
-    ) |>
+    )
+
+jagged_data |> 
     ggplot() +
     geom_point(aes(jaggedness, mean_absolute_error, colour = state), size = 2) +
-    transition_states(forecast_duration, transition_length = 2, state_length = 1) +
+    transition_states(forecast_duration_names, state_length = 12) +
     ease_aes('linear') +
     labs(
         title = 'Temperature Jaggedness versus Forecast Accuracy',
         subtitle = "Forecast Duration: {closest_state}",
         x = 'Temperature Jaggedness',
-        y = 'Forecast Error'
-    )
+        y = 'Forecast Error',
+        colour = 'State'
+    ) 
+        
+      
+```
+
+# Modeling
+
+```{r}
+fcast_error_mdl <- cmdstan_model('model.stan')
+```
+
+
+
+
+```{r}
+fcast_error_fit <- fcast_error_mdl$sample(
+    data = compose_data(
+        jagged_data |> select(
+            duration = forecast_duration_names,
+            jaggedness,
+            mean_forecast_error = mean_absolute_error
+        )
+    ),
+    seed = 3249,
+    chains = 4,
+    parallel_chains = 4,
+    step_size = 0.1,
+    refresh = 500,
+)
+```
+```{r}
+fcast_error_fit |> print(max_rows = 14)
 ```
 
 ```{r}
- 
+fcast_error_fit |>
+    recover_types() |> 
+    spread_draws(alpha[i], beta_jaggedness[i]) |>
+    mutate(i = as_factor(i)) |>
+    mutate(i = fct_recode(i, '1 day' = '1', '2 day' = '2', '3 day' = '3', '4 day' = '4', '5 day' = '5', '6 day' = '6')) |> 
+    ggplot() +
+    geom_point(data = jagged_data |> rename(i = forecast_duration_names), aes(jaggedness, mean_absolute_error, colour = i)) +
+    geom_abline(aes(intercept = alpha, slope = beta_jaggedness, colour = i), alpha = .01) +
+    transition_states(i) +
+    ease_aes('linear')
 ```
-
