@@ -300,6 +300,7 @@ forecast_lagged |>
     ) +
     theme(legend.position = 'none') +
     labs(
+      title = 'Histogram of Forecast Error per Forecast Duration',
       x = 'Forecast Error',
       y = 'Density'
     )
@@ -348,21 +349,18 @@ forecast_distinct <-
 ```{r}
 forecast_distinct |>
     filter(state == 'VIC') |> 
-    group_by(forecast_duration, state, day_phase) |>
     ggplot() +
-    geom_histogram(aes(temp_diff, after_stat(density), fill = day_phase), binwidth = .2) +
+    geom_histogram(aes(temp_diff, after_stat(density), fill = day_phase), binwidth = .2, position = 'stack') +
     facet_wrap(~day_phase) +
     labs(
         title = "Victoria - Day Phase Forecast Error",
         subtitle = "Histogram of Density, Night Defined as Between 19:00-7:00",
         x = "Forecast Error",
         y = "Density",
-        colour = "Day Phase"
+        fill = "Day Phase"
     ) +
-    theme(legend.position = "none")
+    theme(legend.position = 'none')
 ```
-The daytime forecasts
-
 # Jaggedness
 
 ```{r}
@@ -383,7 +381,7 @@ jagged_data <-
 jagged_data |> 
     ggplot() +
     geom_point(aes(jaggedness, mean_absolute_error, colour = state), size = 2) +
-    transition_states(forecast_duration_names, state_length = 12) +
+    transition_states(forecast_duration_names, state_length = 6, transition_length = 12) +
     ease_aes('linear') +
     labs(
         title = 'Temperature Jaggedness versus Forecast Accuracy',
@@ -405,7 +403,7 @@ fcast_error_mdl <- cmdstan_model('model.stan')
 
 
 
-```{r}
+```{r include=FALSE}
 fcast_error_fit <- fcast_error_mdl$sample(
     data = compose_data(
         jagged_data |> select(
@@ -421,19 +419,55 @@ fcast_error_fit <- fcast_error_mdl$sample(
     refresh = 500,
 )
 ```
-```{r}
-fcast_error_fit |> print(max_rows = 14)
+```{r message=FALSE, warning=FALSE}
+fcast_error_fit$summary(
+    variables = c('sigma', 'alpha', 'beta_jaggedness'),
+    c('mean', 'median', 'sd'),
+    quantiles = ~ quantile(., probs = c(0.025, 0.975))
+) |> 
+    gt() 
 ```
 
 ```{r}
 fcast_error_fit |>
-    recover_types() |> 
     spread_draws(alpha[i], beta_jaggedness[i]) |>
     mutate(i = as_factor(i)) |>
     mutate(i = fct_recode(i, '1 day' = '1', '2 day' = '2', '3 day' = '3', '4 day' = '4', '5 day' = '5', '6 day' = '6')) |> 
     ggplot() +
     geom_point(data = jagged_data |> rename(i = forecast_duration_names), aes(jaggedness, mean_absolute_error, colour = i)) +
     geom_abline(aes(intercept = alpha, slope = beta_jaggedness, colour = i), alpha = .01) +
-    transition_states(i) +
+    transition_states(i, state_length = 6, transition_length = 12) +
     ease_aes('linear')
 ```
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_rep[i]) |>
+    sample_frac(.2) |> 
+    filter(
+        y_rep < quantile(y_rep, .975) & y_rep > quantile(y_rep, .025)
+    ) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(jagged_data) |>
+    unnest(data) |>
+    ggplot() +
+    geom_point(aes(jaggedness, y_rep), alpha = .1, size = .1, colour = 'lightblue') +
+    geom_point(aes(jaggedness, mean_absolute_error), size = .1) +
+    facet_wrap(vars(forecast_duration_names))
+```
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_rep[i]) |>
+    sample_frac(.5) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(jagged_data) |>
+    unnest(data) |>
+    mutate(q = mean_absolute_error > quantile(y_rep, .025) & mean_absolute_error < quantile(y_rep, .975)) |>
+    group_by(forecast_duration_names) |> 
+    summarise(q95 = sum(q)/n()) |>
+    gt()
+```
+
