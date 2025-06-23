@@ -130,6 +130,7 @@ aus |>
         colour = 'State'
     )
 ```
+
 # Temperature Data
 
 To acquire the temperature and forecast data, I wrote a script which reaches out to the BOM and retrieves the temperature and the forecasts for the clostest city/town to each of the weather stations. This was wrapped up into a systemd service and timer and ran it every ten minutes, which appears to be the update interval for most temperature on the BOM website.
@@ -324,20 +325,21 @@ forecast_distinct |>
     forecast_statistics() |> 
     ggplot() +
     geom_point(aes(forecast_duration, mean_absolute_error, colour = state), size = .5, alpha = .5) +
-    facet_grid(vars(state)) +
+    facet_wrap(vars(state)) +
     scale_x_time() +
     labs(
         title = 'Mean Absolute Forecast Error by Forecast Duration',
         x = 'Hours',
         y = 'Mean Absolute Error',
         colour = 'State'
-    )
+    ) +
+    theme(legend.position = 'none')
 ```
 There's two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. The other is that there appears to be a cyclical nature to the forecast error. Setting aside what I'll call the 'southern state' issue, we'll investigate the cyclical nature.
 
 Straight away this looks to be a difference in forecast error based on whether it's day or night. I wouldn't have thought that this kind of bias would have come through in the forecast durations. But if you recall the histogram above that showed when the BOM updated its models, this wasn't uniformly distributed. Rather, most of the changes to forecasts ocurred between 2pm and 6pm. Therefore the forcast duration - the difference between the forecast change and the forecast time - will be 'tethered' from this time and the day/night cycle will show in the forecast durations.
 
-We'll roughly code the forecast time's day phase as 'night' based on whether the time is after 7pm and before 7am, and 'day' for all others. This makes sense for the time period of the data. Now we can look at density plot of the forecast error between the two phases.
+We can code the forecast's time as either 'night' based on whether the time is after 7pm and before 7am, and 'day' for all others. This makes sense for the time period of the data. Interestingly if we look at a density plot of the forecast error we see a difference in variation between night and day.
 
 ```{r}
 forecast_distinct <-
@@ -361,7 +363,21 @@ forecast_distinct |>
     ) +
     theme(legend.position = 'none')
 ```
-# Jaggedness
+This, combined with the fact that most of the forecasts are published at a certain time of the day, is why there is a cyclical pattern in the forecast duration graph. We won't delve into this any further, but the question to of course ask is why would this be the case?
+
+# Forecast Error Modelling 
+
+Can we find a way to model the forecast error as a function of some other parameters? The first parameter is obvious: forecast duration. Looking at the mean absolute error over the forecast duration, it increased as the forecast duration increased. This shouldn't be surprising, as the quote goes "prediction is very hard, especially about the future".
+
+But when we looked at the graph, there was a second source of variation. It appeared that the southern states - Victoria, Tasmania, South Australia - had a higher variation in mean absolute error as compared to the northern states.
+
+This is where I'm in danger of cosplaying as a meteorologist and being completely off the mark, but lets have a go. Looking back at the graph of the lowest mean temperature and the start of this article, taken from Tasmania in the south of Australia, what you may have noticed is that the profile of the lowest mean temperature looked different. To me eye it looked rougher and moved up and down in a far more random fashion as compared to the highest mean, which was from a location in the far north of Australia.
+
+## Creating a Jaggedness Index
+
+My guess would be as we go south, certain meteorological features that I would only be guessing at (weather coming off the Southern Ocean?) make the rises and falls in temperature less 'smooth' and more random, and thus more unpredictable.
+
+How can we quantify this? What I have done is calculated a 'jaggedness' index for each of the locations and each of the day-lagged forecast. This is done by summing the absolute difference between successive temperature readings, then diving by the number of observations.
 
 ```{r}
 jagged_data <-
@@ -369,7 +385,8 @@ jagged_data <-
     group_by(wmo, state) |>
     summarise(
         jaggedness = sum(abs(diff(temperature)))/n(),
-        .groups = 'drop'
+
+                .groups = 'drop'
     ) |>
     right_join(forecast_lagged, by = c('wmo', 'state')) |> 
     group_by(wmo, state, jaggedness, forecast_duration_names) |>
@@ -377,7 +394,11 @@ jagged_data <-
         mean_absolute_error = mean(abs(temp_diff)),
         .groups = 'drop'
     )
+```
 
+Plotting this on a graph, with an animation transitioning between each of the day forecast durations, we can see a reasonably linear relationship between this jaggedness index and the mean forecast error.
+
+```{r message=FALSE, warning=FALSE}
 jagged_data |> 
     ggplot() +
     geom_point(aes(jaggedness, mean_absolute_error, colour = state), size = 2) +
@@ -386,22 +407,22 @@ jagged_data |>
     labs(
         title = 'Temperature Jaggedness versus Forecast Accuracy',
         subtitle = "Forecast Duration: {closest_state}",
-        x = 'Temperature Jaggedness',
+        x = 'Temperature',
         y = 'Forecast Error',
         colour = 'State'
     ) 
-        
-      
 ```
 
-# Modeling
+Let's use these two features - duration and jaggedness - as parameters into a simple linear model.
+
+## Modeling
+
+We'll use Stan to create a simple linear model with two parameters: the jaggedness as a continuous variable, and the day-lagged forecast duration as a categorical index. Here's the specifical of the model, which is the only code I'll show in the entire post:
 
 ```{r}
 fcast_error_mdl <- cmdstan_model('model.stan')
+fcast_error_mdl
 ```
-
-
-
 
 ```{r include=FALSE}
 fcast_error_fit <- fcast_error_mdl$sample(
@@ -419,14 +440,38 @@ fcast_error_fit <- fcast_error_mdl$sample(
     refresh = 500,
 )
 ```
+
+After sampling from the posterior (and performing some of the standard checks like trace plots and histograms that I'm not going to show here), we get our alpha and beta parameters (intercept and slope) for each of the indexes, where index 1 = 1 day forecast, index 2 = 2 day forecast, etc, as well as some other statistics about the distributions of each one. For completeleness here's a table of all of the parameters;
+
+
 ```{r message=FALSE, warning=FALSE}
 fcast_error_fit$summary(
     variables = c('sigma', 'alpha', 'beta_jaggedness'),
     c('mean', 'median', 'sd'),
     quantiles = ~ quantile(., probs = c(0.025, 0.975))
 ) |> 
-    gt() 
+    gt() |> 
+    cols_label(
+        variable = "Variable",
+        mean = 'Mean',
+        median = 'Median',
+        sd = 'Std. Dev',
+        '2.5%' = 'Lower 2.5%',
+        '97.5%' = 'Upper 97.5'
+    ) |>
+    cols_align('center') |> 
+    tab_style(
+        style = cell_text(weight = 'bold'),
+        locations = cells_column_labels()
+    )
 ```
+
+Taking a look at index *[6]* - the six day forecast - the parameters tell us the following information:
+
+- *alpha[6]* - for a location with zero jaggedness (the intercept), you would expect on average a mean forecast error of 0.82, with a credible interval between .7 and .94.
+- *beta_jaggedness[6]* - for each increase of jaggedness by 1, you would expect on average the mean forecast error to go up by 4 degrees, with a 95% credible interval of between 3.56 and 4.46. 
+
+Tables are all well a
 
 ```{r}
 fcast_error_fit |>
