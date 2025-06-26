@@ -1,5 +1,5 @@
 ---
-title: "BOM's On Target: Assessing the Beaureau's Forecast Accuracy"
+title: "BOM On Target: Assessing the Beaureau's Forecast Accuracy"
 author: 'Greg Foletta'
 date: '2025-06-14'
 categories: [R Forecasting Weather]
@@ -164,14 +164,18 @@ temp_data |>
     geom_point(aes(temp_datetime, temperature, colour = state), size = .01, alpha = .05) +
     guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
     labs(
-        title = "Australian Weather Station - Temperature over Time",
+        title = "Australian Weather Stations - Temperature over Time",
         x = 'Date/Time',
         y = 'Temperature (°C)',
         colour = 'State'
     ) +
-    facet_wrap(vars(state))
+    facet_wrap(vars(state)) +
+    theme(
+        panel.spacing.x = unit(5, 'mm'),
+        axis.text = element_text(size = 6)
+    )
 ```
-That's a total of `r temp_data |> nrow()` million temperature readings over `r temp_data |> summarise(duration = last(request_datetime_utc - first(request_datetime_utc))) |> pull(duration) |> as.duration()`. It's not the the cleanest visualisation, but gives you a sense of the data we're working with, and as well the breadth of temperature difference in this vast country. If you squint you should be able to a general downward trend of the temperature as we move through Autumn towards Winter.
+That's a total of `r temp_data |> nrow()` million temperature readings over ~8.14 weeks. It's not the the cleanest visualisation, but gives you a sense of the data we're working with, and as well the breadth of temperature difference in this vast country. If you squint you should be able to a general downward trend of the temperature as we move through Autumn towards Winter.
 
 I could easily go off on a number of tangents with this data, but I'll just pull out the locations with the highest and lowest mean temperatures during this period:
 ```{r echo=FALSE}
@@ -219,6 +223,7 @@ forecast_distinct |>
     geom_histogram(aes(hour(request_datetime_local_floored)), binwidth = 1) +
     scale_y_continuous(breaks = scales::breaks_pretty()) +
     labs(
+        title = "Frequency of New Forecast Publication by Hour of Day",
         x = "Hour of Day",
         y = "Count"
     )
@@ -237,8 +242,9 @@ forecast_lagged |>
     filter(wmo == 95866) 
 
 plot_ly(data = dat |> filter(forecast_duration == days(6)) , x = ~forecast_datetime_local, y = ~temperature, type = 'scatter', name = 'Recorded Temperature', mode = 'lines+markers') |>
-add_trace(data = dat |> filter(forecast_duration == days(6)) , y = ~forecast_temp, name = '6 Day Forecast', type = 'scatter', mode = 'lines+markers', alpha = .6) |> 
-add_trace(data = dat |> filter(forecast_duration == days(1)) , y = ~forecast_temp, name = '1 Day Forecast', type = 'scatter', mode = 'lines+markers', alpha = .6) 
+    add_trace(data = dat |> filter(forecast_duration == days(6)) , y = ~forecast_temp, name = '6 Day Forecast', type = 'scatter', mode = 'lines+markers', alpha = .6) |> 
+    add_trace(data = dat |> filter(forecast_duration == days(1)) , y = ~forecast_temp, name = '1 Day Forecast', type = 'scatter', mode = 'lines+markers', alpha = .6) |> 
+    layout(title = "Essendon Airport: Interactive Comparison of 1-day and 6-day Forecast Versus Recorded Temperature")
 ```
 
 
@@ -277,6 +283,8 @@ Let's look at some statistics across all of the weather stations: the mean error
 forecast_lagged_summary |>
     mutate(forecast_duration = as.duration(forecast_duration)) |> 
     gt() |>
+    tab_header("Forecast Error Statistics by Forecast Duration") |> 
+    cols_align('center') |> 
     cols_label(
         forecast_duration = "Forecast Duration",
         mean_forecast_error = "Mean Error",
@@ -316,7 +324,13 @@ forecast_lagged |>
     geom_qq(size = .1, distribution = stats::qnorm) +
     geom_qq_line(distribution = stats::qnorm) +
     facet_wrap(vars(forecast_duration_names)) +
-    scale_x_continuous(breaks = scales::breaks_pretty())
+    scale_x_continuous(breaks = scales::breaks_pretty()) +
+    labs(
+        title = "QQ Plot of Forecast Error Distributions by Forecast Duration",
+        subtitle = "Normal Reference Distribution",
+        x = 'Normal Theoretical Quantiles',
+        y = 'Sample Quantiles'
+    )
 ```
 Instead of looking at whole days between the forecast and the recrorded temperature, let's use our look at the data set which contains all of the changed forecasts over time, therefore showing a wide spectrum of times between when the forecast was made, and the actual recorded temperature.
 ```{r}
@@ -333,7 +347,11 @@ forecast_distinct |>
         y = 'Mean Absolute Error',
         colour = 'State'
     ) +
-    theme(legend.position = 'none')
+    theme(legend.position = 'none') +
+    theme(
+        panel.spacing.x = unit(5, 'mm'),
+        axis.text = element_text(size = 6)
+    )
 ```
 There's two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. The other is that there appears to be a cyclical nature to the forecast error. Setting aside what I'll call the 'southern state' issue, we'll investigate the cyclical nature.
 
@@ -355,9 +373,9 @@ forecast_distinct |>
     geom_histogram(aes(temp_diff, after_stat(density), fill = day_phase), binwidth = .2, position = 'stack') +
     facet_wrap(~day_phase) +
     labs(
-        title = "Victoria - Day Phase Forecast Error",
+        title = "Victoria - Forecast Error by Day/Night",
         subtitle = "Histogram of Density, Night Defined as Between 19:00-7:00",
-        x = "Forecast Error",
+        x = "Forecast Error (°C)",
         y = "Density",
         fill = "Day Phase"
     ) +
@@ -407,7 +425,7 @@ jagged_data |>
     labs(
         title = 'Temperature Jaggedness versus Forecast Accuracy',
         subtitle = "Forecast Duration: {closest_state}",
-        x = 'Temperature',
+        x = 'Temperature Jaggedness',
         y = 'Forecast Error',
         colour = 'State'
     ) 
@@ -419,7 +437,7 @@ Let's use these two features - duration and jaggedness - as parameters into a si
 
 We'll use Stan to create a simple linear model with two parameters: the jaggedness as a continuous variable, and the day-lagged forecast duration as a categorical index. Here's the specifical of the model, which is the only code I'll show in the entire post:
 
-```{r}
+```{r comment=''}
 fcast_error_mdl <- cmdstan_model('model.stan')
 fcast_error_mdl
 ```
@@ -441,7 +459,7 @@ fcast_error_fit <- fcast_error_mdl$sample(
 )
 ```
 
-After sampling from the posterior (and performing some of the standard checks like trace plots and histograms that I'm not going to show here), we get our alpha and beta parameters (intercept and slope) for each of the indexes, where index 1 = 1 day forecast, index 2 = 2 day forecast, etc, as well as some other statistics about the distributions of each one. For completeleness here's a table of all of the parameters;
+After sampling from the posterior (and performing some of the standard checks like trace plots and histograms that I'm not going to show here), we get our alpha and beta parameters (intercept and slope) for each of the indexes, where index 1 = 1 day forecast, index 2 = 2 day forecast, etc, as well as some other statistics about the distributions of each one. For completeness here's a table of all of the parameters;
 
 
 ```{r message=FALSE, warning=FALSE}
@@ -449,8 +467,10 @@ fcast_error_fit$summary(
     variables = c('sigma', 'alpha', 'beta_jaggedness'),
     c('mean', 'median', 'sd'),
     quantiles = ~ quantile(., probs = c(0.025, 0.975))
-) |> 
-    gt() |> 
+) |>
+    mutate(across(c(2:6), ~round(.x, digits = 2))) |> 
+    gt() |>
+    tab_header("Model Parameter: Posterior Distribution Statistics") |> 
     cols_label(
         variable = "Variable",
         mean = 'Mean',
@@ -466,12 +486,12 @@ fcast_error_fit$summary(
     )
 ```
 
-Taking a look at index *[6]* - the six day forecast - the parameters tell us the following information:
+I'm not going to go through each one, but if we look at index *[6]* - the six day forecast - the parameters tell us the following information:
 
 - *alpha[6]* - for a location with zero jaggedness (the intercept), you would expect on average a mean forecast error of 0.82, with a credible interval between .7 and .94.
 - *beta_jaggedness[6]* - for each increase of jaggedness by 1, you would expect on average the mean forecast error to go up by 4 degrees, with a 95% credible interval of between 3.56 and 4.46. 
 
-Tables are all well a
+Tables are hard to interpret, so instead what we'll do is plot all a line for each of the parameters drawn from the posterior, which shows the range of values the model believes parameters could be. LIke before, we transition through each of the forecast durations:
 
 ```{r}
 fcast_error_fit |>
@@ -482,8 +502,19 @@ fcast_error_fit |>
     geom_point(data = jagged_data |> rename(i = forecast_duration_names), aes(jaggedness, mean_absolute_error, colour = i)) +
     geom_abline(aes(intercept = alpha, slope = beta_jaggedness, colour = i), alpha = .01) +
     transition_states(i, state_length = 6, transition_length = 12) +
-    ease_aes('linear')
+    ease_aes('linear') +
+    labs(
+        title = "Model Credible Values over Forecast Duration",
+        subtitle = "Forecast Duration: {closest_state}",
+        x = 'Temperature Jaggedness',
+        y = 'Mean Forecast Error',
+        colour = 'State'
+    )
+        
 ```
+Some reasonably tight credible intervals for the parameters. But there's one parameter left we haven't looked at: sigma, the residual standard deviation. Simply put it's a measure of how far the observed data deviates from our fitted values We've used a single parameter, so it doesn't vary across the forecast durations.
+
+We can check how well our model has done by performing posterior predictive checks. In our stan model we generated random data using the alpha, beta, and sigma values drawn from the posterior. We can overlay these values (in light blue) across the observed data:
 
 ```{r}
 fcast_error_fit |>
@@ -497,10 +528,22 @@ fcast_error_fit |>
     bind_cols(jagged_data) |>
     unnest(data) |>
     ggplot() +
-    geom_point(aes(jaggedness, y_rep), alpha = .1, size = .1, colour = 'lightblue') +
-    geom_point(aes(jaggedness, mean_absolute_error), size = .1) +
-    facet_wrap(vars(forecast_duration_names))
+    geom_point(aes(jaggedness, y_rep, colour = "Predictved"), alpha = .1, size = .1) +
+    geom_point(aes(jaggedness, mean_absolute_error, colour = "Real"), size = .1) +
+    facet_wrap(vars(forecast_duration_names)) +
+    labs(
+        title = "Model Posterior Predictive Distribution",
+        x = "Jaggednesss",
+        y = "Mean Forecast Error",
+        colour = "Type"
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 2, alpha = 1)))
 ```
+Most of our data lies within the bands of the generated data, which is good. However there's a couple of properties which are suboptimal: the first is that there's a bias in the model. Almost all of the values which don't fit are above the bands, rather than below. Our model, which uses normal residuals/errors, assumes that the errors should be approximately symmetric, which they are not.
+
+Secondly, those value above the bands are a long way from where the model would expect them to be. So our model doesn't do a great job of predicting the mean forecast error based on jaggedness for those sites.
+
+If we calculate the 95% interval of our generated values from the model, then calculate the percentage of recorded values that fall in that range, we get the following results:
 
 ```{r}
 fcast_error_fit |>
@@ -513,6 +556,14 @@ fcast_error_fit |>
     mutate(q = mean_absolute_error > quantile(y_rep, .025) & mean_absolute_error < quantile(y_rep, .975)) |>
     group_by(forecast_duration_names) |> 
     summarise(q95 = sum(q)/n()) |>
-    gt()
+    gt() |>
+    tab_header("Percentage of Real Values Falling Within 95% of Posterior Predictive Interval") |>  
+    cols_label(
+        forecast_duration_names = "Forecast Duration",
+        q95 = "Percentage"
+    ) |>
+    cols_align("center")
 ```
+
+That's good, range of the posterior predictive distribution is close to our observed data. But it also shouldn't be too surprising, as the model was trained off this data.
 
