@@ -11,6 +11,17 @@ I had trepidation writing this article, and it almost didn't get off the ground.
 
 THe premise of this article came about after talking to people about the weather, often with them complaining that the forecasts were bad. I didn't necessarily believe that and went looking for historical data on how the BOM has performed, but couldn't find any. So what we'll take a look at in this article is how well the BOM has done at forecasting the temperature from 1 to 7 days out.
 
+# TL;DR
+
+This is a hefty article, so here's a quick rundown of what we'll cover before diving in: 
+
+* The building temperature and 1-6 day temperature forecast datasets from 526 locations around Australia.
+* Determining and visualising the accuracy of these forecasts.
+* Creating a 'jaggedness' metric per site.
+* Using Bayesian methods to build a model for predicting forecast accuracy.
+* Assessing the model's performance on in-sample and out-of-sample data.
+
+Let's go...
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
@@ -75,11 +86,12 @@ forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata') |>
   drop_na(temperature) |>
   left_join(forecast_mapping, by = 'forecast_duration')
 
+
+
 weather_stations <- 
     read_csv('weather_stations_current_data.csv', show_col_types = FALSE) |> 
     separate(location, into = c('city', 'state'), sep = ', ', remove = FALSE)
 ```
-
 ```{r weather_stations, eval=FALSE, include=FALSE}
 # We keep this in here for posterity, but we get the weather station data in via csv that was generated from this.
 weather_stations_raw <-
@@ -398,14 +410,16 @@ My guess would be as we go south, certain meteorological features that I would o
 How can we quantify this? What I have done is calculated a 'jaggedness' index for each of the locations and each of the day-lagged forecast. This is done by summing the absolute difference between successive temperature readings, then diving by the number of observations.
 
 ```{r}
-jagged_data <-
+site_jaggedness <-
     temp_data |> 
     group_by(wmo, state) |>
     summarise(
         jaggedness = sum(abs(diff(temperature)))/n(),
+        .groups = 'drop'
+    ) 
 
-                .groups = 'drop'
-    ) |>
+jagged_data <-
+    site_jaggedness |> 
     right_join(forecast_lagged, by = c('wmo', 'state')) |> 
     group_by(wmo, state, jaggedness, forecast_duration_names) |>
     summarise(
@@ -413,6 +427,52 @@ jagged_data <-
         .groups = 'drop'
     )
 ```
+
+
+```{r}
+min_max_jagged <-
+    jagged_data |>
+    filter(
+        jaggedness == min(jaggedness) |
+        jaggedness == max(jaggedness)
+    ) |>
+    distinct(wmo, .keep_all = TRUE) |>
+    left_join(temp_data, by = c('wmo', 'state')) |>
+    left_join(weather_stations |> select(wmo, site_name), by = 'wmo') |>
+    mutate(site = glue("{site_name}, {state}")) 
+
+p1 <-
+    min_max_jagged |> 
+    ggplot(aes(request_datetime_utc, temperature, colour = site)) +
+    geom_point(size = .5) +
+    geom_line() +
+    facet_grid(vars(site), labeller = label_wrap_gen())+
+    theme(legend.position = 'none') +
+    labs(
+        title = "Sites with Minimum and Maximum 'Jaggedness'",
+        subtitle = "Temperature over Time",
+        x = 'Date/Time',
+        y = 'Temperature',
+        colour = 'Location'
+    )
+
+p2 <-
+    min_max_jagged |>
+    select(site, jaggedness) |>
+    distinct(site, .keep_all = TRUE) |> 
+    gt() |>
+    tab_header("Min/Max Site Jaggedness") |>
+    cols_label(
+        site = "Site",
+        jaggedness = "Jaggedness"
+    )
+
+# Print table
+p2
+# Print graph
+p1
+```
+
 
 Plotting this on a graph, with an animation transitioning between each of the day forecast durations, we can see a reasonably linear relationship between this jaggedness index and the mean forecast error.
 
@@ -442,6 +502,23 @@ fcast_error_mdl <- cmdstan_model('model.stan')
 fcast_error_mdl
 ```
 
+```{r}
+# Read in the test set for out-of-sample testing
+test_set <- read_rds('test_set.Rdata') |>
+    drop_na(temperature) |>
+    left_join(forecast_mapping, by = 'forecast_duration') |>
+    forecast_accuracy() 
+        
+test_jagged_data <-
+    site_jaggedness |> 
+    right_join(test_set, by = c('wmo', 'state')) |> 
+    group_by(wmo, state, jaggedness, forecast_duration_names) |>
+    summarise(
+        mean_absolute_error = mean(abs(temp_diff)),
+        .groups = 'drop'
+    )
+```
+
 ```{r include=FALSE}
 fcast_error_fit <- fcast_error_mdl$sample(
     data = compose_data(
@@ -449,6 +526,11 @@ fcast_error_fit <- fcast_error_mdl$sample(
             duration = forecast_duration_names,
             jaggedness,
             mean_forecast_error = mean_absolute_error
+        ),
+        test_jagged_data |> select(
+            duration_t = forecast_duration_names,
+            jaggedness_t = jaggedness,
+            mean_forecast_error_t = mean_absolute_error
         )
     ),
     seed = 3249,
@@ -532,7 +614,8 @@ fcast_error_fit |>
     geom_point(aes(jaggedness, mean_absolute_error, colour = "Real"), size = .1) +
     facet_wrap(vars(forecast_duration_names)) +
     labs(
-        title = "Model Posterior Predictive Distribution",
+        title = "Posterior Predictive Interval - In-Sample",
+        subtitle = "95% Credible Interval for Posterior Predictions",
         x = "Jaggednesss",
         y = "Mean Forecast Error",
         colour = "Type"
@@ -555,9 +638,12 @@ fcast_error_fit |>
     unnest(data) |>
     mutate(q = mean_absolute_error > quantile(y_rep, .025) & mean_absolute_error < quantile(y_rep, .975)) |>
     group_by(forecast_duration_names) |> 
-    summarise(q95 = sum(q)/n()) |>
+    summarise(q95 = scales::label_percent(accuracy = .1)(sum(q)/n())) |>
     gt() |>
-    tab_header("Percentage of Real Values Falling Within 95% of Posterior Predictive Interval") |>  
+    tab_header(
+        title = "Real Values Within 95% Credible Interval",
+        subtitle = "Training Data Set"
+    ) |>  
     cols_label(
         forecast_duration_names = "Forecast Duration",
         q95 = "Percentage"
@@ -567,3 +653,56 @@ fcast_error_fit |>
 
 That's good, range of the posterior predictive distribution is close to our observed data. But it also shouldn't be too surprising, as the model was trained off this data.
 
+The real test of the model is how it performs on out of sample data. I've held out ~3 weeks of temperature/forecast accuracy data from the time period immediately after the training set. Each location is still using the jaggedness calculated from the training temperatures. Let's take a look at how it performs: 
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_test[i]) |>
+    sample_frac(.2) |> 
+    filter(
+        y_test < quantile(y_test, .975) & y_test > quantile(y_test, .025)
+    ) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(test_jagged_data) |>
+    unnest(data) |>
+    ggplot() +
+    geom_point(aes(jaggedness, y_test, colour = "Predicted"), alpha = .1, size = .1) +
+    geom_point(aes(jaggedness, mean_absolute_error, colour = "Real"), size = .1) +
+    facet_wrap(vars(forecast_duration_names)) +
+    labs(
+        title = "Posterior Predictive Validation - Out of Sample Data",
+        subtitle = "95% Credible Interval for Posterior Predictions",
+        x = "Jaggednesss",
+        y = "Mean Forecast Error",
+        colour = "Type"
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 2, alpha = 1)))
+```
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_test[i]) |>
+    sample_frac(.5) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(test_jagged_data) |>
+    unnest(data) |>
+    mutate(q = mean_absolute_error > quantile(y_test, .025) & mean_absolute_error < quantile(y_test, .975)) |>
+    group_by(forecast_duration_names) |> 
+    summarise(q95 = scales::label_percent(accuracy = .1)(sum(q)/n())) |>
+    gt() |>
+    tab_header(
+        title = "Real Values Within 95% Credible Interval",
+        subtitle = "Test (Out-of-Sample) Data Set"
+    ) |>  
+    cols_label(
+        forecast_duration_names = "Forecast Duration",
+        q95 = "Percentage"
+    ) |>
+    cols_align("center")
+```
+
+# Summary
+
+Phew, that one just kept going and going!
