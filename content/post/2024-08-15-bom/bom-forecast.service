@@ -1,0 +1,9 @@
+[Unit]
+Description="BOM Forecast and Current Temp Requests"
+Requires=bom-forecast.timer
+
+[Service]
+Type=simple
+ExecStart=/home/gjf/bom_forecast_analysis/get_bom_data.sh
+WorkingDirectory=/home/gjf/bom_forecast_analysis/
+User=gjf

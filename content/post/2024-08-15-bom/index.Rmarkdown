@@ -1,0 +1,746 @@
+---
+title: "BOM On Target: Assessing the Beaureau's Forecast Accuracy"
+author: 'Greg Foletta'
+date: '2025-06-29'
+categories: [R Forecasting Weather]
+---
+
+In this article we're going to be taking a look at the forecast accuracy of Australia's Bureau of Metorology (BOM), but before starting a quick preface.
+
+I had trepidation writing this article, and it almost didn't get off the ground. I'm not a meteorologist, and I'm also a data science dilettante. Wading into this particular field without foundational knowledge felt very arrogant, and to be frank I was worried I'd make a fool out of myself. But after having a chat with one of my great friends who has a Phd in meteorology, she assuaged some of my apprehensions, so here we are.
+
+This post came about after searching and being unable to find historical information on the BOM's forecasting performance. It may be that I just missed it somewhere, so if someone knows where this may be, please reach out.  
+
+# TL;DR
+
+This is a hefty article, so here's a quick rundown of what we'll cover before diving in: 
+
+* The building temperature and 1-6 day temperature forecast datasets from 526 locations around Australia.
+* Determining and visualising the accuracy of these forecasts.
+* Creating a 'jaggedness' metric per site.
+* Using Bayesian methods to build a model for predicting forecast accuracy.
+* Assessing the model's performance on in-sample and out-of-sample data.
+
+Let's go...
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(httr2)
+library(rvest)
+library(janitor)
+library(glue)
+library(tictoc)
+library(here)
+library(gt)
+library(plotly)
+library(gganimate)
+library(cmdstanr)
+library(tidybayes)
+
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+scale_colour_brewer_d <- function(..., palette = "Dark2") {
+  scale_colour_brewer(..., palette = palette )
+}
+
+scale_fill_brewer_d <- function(..., palette = "Dark2") {
+  scale_fill_brewer(..., palette = palette)
+}
+
+options(
+  ggplot2.discrete.colour = scale_colour_brewer_d,
+  ggplot2.discrete.fill = scale_fill_brewer_d
+)
+```
+
+# Weather Stations
+
+In previous articles I've gone into detail about the data acquisition process, I think because it's quite a an enjoyable process. This time however I'm going to keep it brief and give you a quick overview about how I got the data, and what the data is.
+
+I needed three pieces of data:
+
+1. A list of BOM weather stations
+1. The temperature at those weather stations over a period of time
+1. The temperature forecasts at each of those stations
+
+
+Number one was easy, as the BOM provides a [list of weather stattions](http://www.bom.gov.au/climate/data/lists_by_element/stations.txt), including their name, latitude, longitude. This list get's filtered down from ~6,500 total active weather stations to 526 that have a world meteorological organisation (WMO) ID. Here's their locations around Australia:
+
+```{r include=FALSE}
+temp_data <- readRDS('bom_temperature.Rdata') |> drop_na(temperature)
+
+forecast_distinct <- 
+    readRDS('bom_forecasts_change.Rdata') |> 
+    drop_na(temperature) |>
+    filter(forecast_duration > 0)
+
+forecast_mapping <-
+  tibble(
+    forecast_duration = 60*60*24*c(1:6),
+    forecast_duration_names = as_factor(glue_data(list(a = 1:6), "{a} day"))
+)
+forecast_lagged <- readRDS('bom_forecasts_day_lags.Rdata') |> 
+  drop_na(temperature) |>
+  left_join(forecast_mapping, by = 'forecast_duration')
+
+
+
+weather_stations <- 
+    read_csv('weather_stations_current_data.csv', show_col_types = FALSE) |> 
+    separate(location, into = c('city', 'state'), sep = ', ', remove = FALSE)
+```
+```{r weather_stations, eval=FALSE, include=FALSE}
+# We keep this in here for posterity, but we get the weather station data in via csv that was generated from this.
+weather_stations_raw <-
+    request('http://www.bom.gov.au/climate/data/lists_by_element/stations.txt') |>
+    req_user_agent('Mozilla') |>
+    req_perform() |>
+    resp_body_string() 
+
+weather_stations <-
+    weather_stations_raw |> 
+    read_fwf(skip = 3, show_col_types = FALSE) |>  
+    rename(
+        site = X1, dist = X2, site_name = X3, start = X4,
+        end = X5, lat = X6, lon = X7, source = X8,
+        state = X9, height = X10, bar_ht = X11, wmo = X12
+    ) |>
+    slice_head(n = -6) 
+
+nearest_location <- function(loc_html) {
+        tibble(
+            location = html_element(loc_html, 'a') |> html_text(),
+            path = html_element(loc_html, 'a') |> html_attr('href'),
+            loc_lat = html_element(loc_html, 'li') |> html_attr('data-lat'),
+            loc_lon = html_element(loc_html, 'li') |> html_attr('data-lon')
+        )
+}
+
+weather_stations_location <-
+    weather_stations |>
+    slice_tail(n = -1) |> 
+    filter(wmo != '..') |> 
+    mutate(reqs = map2(lat, lon, ~{ glue('http://www.bom.gov.au/places/search/?q={.x},{.y}&suggest=1') |> request() |> req_user_agent('Mozilla') })) |>
+    mutate(nearest_location = req_perform_parallel(reqs) |> resps_successes() |> resps_data(resp_data = \(resp)(list(nearest_location(resp_body_html(resp)))))) |>
+    select(-reqs) |> 
+    unnest(nearest_location)
+```
+```{r echo=FALSE}
+aus <- ne_countries(returnclass = "sf", scale = 'medium', country = 'Australia')
+aus |>
+    ggplot() +
+    geom_sf() +
+    geom_point(data = weather_stations, aes(x = lon, y = lat, colour = state), size = .2) +
+    coord_sf(xlim = c(114, 153), ylim = -c(11, 43)) +
+    labs(
+        title = 'WMO Weather Station Locations in Australia',
+        x = 'Lon',
+        y = 'Lat',
+        colour = 'State'
+    )
+```
+
+# Temperature Data
+
+To acquire the temperature and forecast data, I wrote a script which reaches out to the BOM and retrieves the temperature and the forecasts for the clostest city/town to each of the weather stations. This ran every ten minutes, which appears to be the update interval for most temperature on the BOM website.
+
+Here's a view of the temperature data, broken down state by state:
+
+```{r eval=FALSE, include=FALSE}
+set.seed(233433)
+forecast_lagged |>
+    group_by(wmo) |>
+    nest(.key = 'data') |>
+    ungroup() |> 
+    slice_sample(n = 2) |>
+    unnest(data) |>
+    group_by(city, state) |>
+    slice_head(n = 4) |>
+    select(request_datetime_local_floored, wmo, city, state, forecast_datetime_local, forecast_duration, forecast_temp, temperature) |>
+    gt() |> 
+    cols_label(
+  
+              request_datetime_local_floored = "Request Date/Time",
+        wmo = 'WMO ID',
+        forecast_datetime_local = 'Forecast Date/Time',
+        forecast_duration = 'Forecast Duration',
+        temperature = 'Recorded Temperature'
+    )
+```
+```{r echo=FALSE}
+temp_data |>
+    ggplot() +
+    geom_point(aes(temp_datetime, temperature, colour = state), size = .01, alpha = .05) +
+    guides(colour = guide_legend(override.aes = list(size = 2, alpha = 1))) +
+    labs(
+        title = "Australian Weather Stations - Temperature over Time",
+        x = 'Date/Time',
+        y = 'Temperature (°C)',
+        colour = 'State'
+    ) +
+    facet_wrap(vars(state)) +
+    theme(
+        panel.spacing.x = unit(5, 'mm'),
+        axis.text = element_text(size = 6)
+    )
+```
+That's a total of `r temp_data |> nrow()` million temperature readings over ~8 weeks. If you squint you should be able to a general downward trend of the temperature as we move through Autumn towards Winter.
+
+I could easily go off on a number of tangents with this data, but I'll just pull out the locations with the highest and lowest mean temperatures during this period:
+```{r echo=FALSE}
+# Calculate the mean temperature per station ID, then slice the stations with
+# the highest and lowest mean temperature, then graph these
+temp_data |>
+    group_by(station_id) |>
+    summarise(
+        mean_temp = mean(temperature, na.rm = TRUE)
+    ) |>
+    ungroup() |>
+    filter(
+        mean_temp == min(mean_temp) |
+        mean_temp == max(mean_temp)
+    ) |>
+    left_join(weather_stations |> select(station_id, site_name), by = 'station_id') |>
+    left_join(temp_data, by = 'station_id') |> 
+    ggplot() +
+    geom_line(aes(request_datetime_utc, temperature, colour = str_wrap(paste(site_name, state, sep = ', '), width = 12)), linewidth = .4) +
+    geom_hline(aes(yintercept = mean_temp, colour = str_wrap(paste(site_name, state, sep = ', '), width = 12))) +
+    labs(
+        colour = 'City, State',
+        x = 'Date/Time',
+        y = 'Temperature'
+    )  +
+    guides(colour = guide_legend(
+        override.aes = list(size = 2, alpha = 1),
+    ))
+```
+Unsurpirisingly we've got a city in the north of the country, and a mountain in the very south. Take note of the different shapes of these graphs, we'll discuss this later on in the article.
+
+# Forecast Data
+
+The BOM provides a 3-hourly temperature forecasts for each location (e.g. 1:00AM, 4:00AM, ... 10:00PM) out to 7 days. As with the temperature, I've acquired this from their website every ten minutes for each location. This means we get 8 (hourly forecasts) * 7 (days) * 526 (locations) = 29,456 forecasts every ten minutes. Most of these are identical, as the forecast hasn't changed. I've pruned this data back into two datasets:
+
+1. A **changed forecast** set, which contains rows of data where the forecast temperature for a date/time/location has changed from the previous forecast.  
+1. A **day-lagged forecast** set, which contains the forecasts which are eactly 1,2,3,...6 days out from the date/time we acquired the data.
+
+
+Visualising the forecast data over time becomes messy very quickly, so instead let's take a look at how often the BOM updates their models. This uses the *changed forecast* dataset, and is a histogram of the hour in the day in which the changed forecast was published to the website: 
+
+```{r}
+forecast_distinct |>
+    ggplot() +
+    geom_histogram(aes(hour(request_datetime_local_floored)), binwidth = 1) +
+    scale_y_continuous(breaks = scales::breaks_pretty()) +
+    labs(
+        title = "Frequency of New Forecast Publication by Hour of Day",
+        x = "Hour of Day",
+        y = "Count"
+    )
+```
+That spike in the late afternoon? Another data point to take note of, as it will be pertinent later on in this post.
+
+# Forecast Accuracy
+
+For each of the aforementioned data sets, we join them with the recorded temperature data. For each date/time we've got multiple forecasts ranging from 3 hours to 7 days out, and then the actual temperature that was recorded at that date/time. This allows us to calculate the forecast accuracy as *(forecast temp - recorded temp)*.
+
+Let's get to the crux of this article: forecast accuracy. There's a small fly in the ointment, in that the published forecast temperatures integers, whereas the temperatures have a single decimal place. So a decision: do we round the recorded temperatures to whole numbers as well, or keep them as reals? I've made the decision here to continue to use the decimal temperatures, rather than round/ceil/floor to turn them into integers as well. All we can do is work with that data we've got, and the less assumptions or changes the better.  
+
+To start, here's an interactive view of both the 1 day and 6 day forecast overlaid across the recorded temperature for one site (Essendon Airport in Melbourne). Initially it's a bit messy, but if you zoom in and click the legend to add/remove the each of the forecasts you get an idea about how it's changed, and how far off each one was.
+
+```{r}
+dat <- 
+forecast_lagged |>
+    filter(wmo == 95866) 
+
+plot_ly(data = dat |> filter(forecast_duration == days(6)) , x = ~forecast_datetime_local, y = ~temperature, type = 'scatter', name = 'Recorded Temperature', mode = 'lines+markers') |>
+    add_trace(data = dat |> filter(forecast_duration == days(6)) , y = ~forecast_temp, name = '6 Day Forecast', type = 'scatter', mode = 'lines+markers', alpha = .6) |> 
+    add_trace(data = dat |> filter(forecast_duration == days(1)) , y = ~forecast_temp, name = '1 Day Forecast', type = 'scatter', mode = 'lines+markers', alpha = .6) |> 
+    layout(
+        title = "Essendon, VIC: Forecast vs. Recorded Temperature",
+        xaxis = list(title = 'Date/Time'), 
+        yaxis = list(title = 'Temperature (°C)')
+    )
+```
+
+
+
+```{r echo=FALSE}
+forecast_accuracy <- function(forecasts) {
+    forecasts |> 
+    mutate(temp_diff = forecast_temp - temperature)
+}
+
+forecast_statistics <- function(forecasts) {
+    forecasts |> 
+    summarise(
+        mean_absolute_error = mean(abs(temp_diff)),
+        mean_forecast_error = mean(temp_diff),
+        sd_forecast_error = sd(temp_diff),
+        nine_five_quantile = list(quantile(temp_diff, probs = c(.025, .975))),
+        #excess_kurtosis = mean( ( (temp_diff - mean(temp_diff)) / sd(temp_diff))^4 ) - 3,
+        #n = n()
+        .groups = 'drop'
+    ) 
+}
+
+forecast_lagged <- forecast_lagged |> forecast_accuracy()
+forecast_distinct <- forecast_distinct |> forecast_accuracy()
+
+forecast_lagged_summary  <- 
+    forecast_lagged |> 
+    group_by(forecast_duration) |>
+    forecast_statistics()
+```
+
+Let's look at some statistics across all of the weather stations: the mean error, the mean absolute error, the standard deviation of the error, and the 95% quantiles for the error.
+
+```{r echo=FALSE}
+forecast_lagged_summary |>
+    mutate(forecast_duration = as.duration(forecast_duration)) |> 
+    select(forecast_duration, mean_forecast_error, mean_absolute_error, sd_forecast_error, nine_five_quantile) |> 
+    gt() |>
+    tab_header("Forecast Error Statistics by Forecast Duration") |> 
+    cols_align('center') |> 
+    cols_label(
+        forecast_duration = "Forecast Duration",
+        mean_forecast_error = "Mean Error",
+        mean_absolute_error = "Mean Absolute Error",
+        sd_forecast_error = "Standard Deviation of Error",
+        nine_five_quantile = "95% Quantile"
+    )
+```
+
+The mean error doesn't tell us about the accuracy (as negative and positive errors cancel each other out), but more about the bias in the model. It's showing as that across all forecasts there's a slight bias towards over-estimating the temperature, but only by a tenth of a degree or so.
+
+The mean absolute error of changes from 1.33 degrees a day out, so 1.88 degrees six days out. The standard deviation increasing tells us that the errors are more spread out as well.
+
+A histogram of the errors shows their distribution and how that changes over time. I've overlaid a normal distribution with a fixed mean of 0 and standard deviation of 2 to act as a reference point:
+
+```{r echo=FALSE}
+forecast_lagged |>
+    ggplot() +
+    geom_histogram(aes(temp_diff, after_stat(density), fill = forecast_duration_names), binwidth = .1) +
+    geom_function(fun = dnorm, args = list(mean = 0, sd = 2), alpha = .5) +
+    facet_wrap(vars(forecast_duration_names)) +
+    labs(
+        fill = "Forecast Duration"
+    ) +
+    theme(legend.position = 'none') +
+    labs(
+      title = 'Histogram of Forecast Error per Forecast Duration',
+      subtitle = 'Normal(0, 2) Shown Across All as Reference Point',
+      x = 'Forecast Error',
+      y = 'Density'
+    )
+```
+This shows the mean error slightly shifting to the right and the distribution spreading out as the standard deviation increases. The distribution looks *sort of* normal, and for the first two standard deviations it tracks really well. You'll notice this with the table above, where the mean +- 2 x std.dev lines up well with the 95% quantiles.
+
+But we can't assume it's normal across the board. This is best visualised with a quantile-quantile (QQ) plot. 
+
+```{r echo=FALSE}
+forecast_lagged |>
+    ggplot(aes(sample = temp_diff, group = forecast_duration)) +
+    geom_qq(size = .1, distribution = stats::qnorm) +
+    geom_qq_line(distribution = stats::qnorm) +
+    facet_wrap(vars(forecast_duration_names)) +
+    scale_x_continuous(breaks = scales::breaks_pretty()) +
+    labs(
+        title = "QQ Plot of Forecast Error Distributions by Forecast Duration",
+        subtitle = "Normal Reference Distribution",
+        x = 'Normal Theoretical Quantiles',
+        y = 'Sample Quantiles'
+    )
+```
+This shows that these the forecast error distriubtions, like we mentioned before, track the normal for the first two standard deviation. Outside of that they have fatter tails than a normal, i.e. you'll find more observations inside 3 or 4 standard deviations than you would in a normal distribution.
+
+Instead of looking at whole days between the forecast and the recorded temperature, we can switch to the changed data set which contains all of the changed forecasts over time. This gives a more granulart view of the times between when the forecast was made, and the actual recorded temperature.
+```{r}
+forecast_distinct |>
+    group_by(forecast_duration, state) |> 
+    forecast_statistics() |> 
+    ggplot() +
+    geom_point(aes(forecast_duration, mean_absolute_error, colour = state), size = .5, alpha = .5) +
+    facet_wrap(vars(state)) +
+    scale_x_time() +
+    labs(
+        title = 'Mean Absolute Forecast Error by Forecast Duration',
+        x = 'Hours',
+        y = 'Mean Absolute Error',
+        colour = 'State'
+    ) +
+    theme(legend.position = 'none') +
+    theme(
+        panel.spacing.x = unit(5, 'mm'),
+        axis.text = element_text(size = 6)
+    )
+```
+There's two things that immediately jump out at me: the is first is both the variance and mean absolute error over time appear to be much greater for Victoria, Tasmania, and South Australia as opposed to the others. The second is that there appears to be a cyclical nature to the forecast error. Setting aside what I'll call the 'southern state' issue, we'll investigate the cyclical nature.
+
+Straight away this looks to be a difference in forecast error based on whether it's day or night. I wouldn't have thought that this kind of bias would have come through in the forecast durations. But if you recall the previous histogram that showed when the BOM published its updated models, this wasn't uniformly distributed. Rather, most of the changes to forecasts occurred between 2pm and 6pm. Therefore the forecast duration - the difference between the forecast change and the forecast time - will be 'tethered' from this time and the day/night cycle will show in the forecast durations.
+
+Let's code the forecast's time as either 'night' based on whether the time is after 7pm and before 7am, and 'day' for all others. This makes sense for the time period of the data. Interestingly if we look at a density plot of the forecast error we see a difference in variation between night and day.
+
+```{r}
+forecast_distinct <-
+    forecast_distinct |>
+    mutate(day_phase = if_else( hour(temp_datetime) >= 19 | hour(temp_datetime) <= 7, 'night', 'day'))
+```
+
+
+```{r}
+forecast_distinct |>
+    filter(state == 'VIC') |> 
+    ggplot() +
+    geom_histogram(aes(temp_diff, after_stat(density), fill = day_phase), binwidth = .2, position = 'stack') +
+    facet_wrap(~day_phase) +
+    labs(
+        title = "Victoria - Forecast Error by Day/Night",
+        subtitle = "Histogram of Density, Night Defined as Between 19:00-7:00",
+        x = "Forecast Error (°C)",
+        y = "Density",
+        fill = "Day Phase"
+    ) +
+    theme(legend.position = 'none')
+```
+This, combined with the fact that most of the forecasts are published at a certain time of the day, is why there is a cyclical pattern in the forecast duration graph. We won't delve into this any further, but the question to of course ask is why would this be the case? I'm not going to dive any deeper into this in this post, but it's something to think about.
+
+# Forecast Error Modelling 
+
+Can we find a way to model the forecast error as a function of some other parameters? The first parameter is obvious: forecast duration. Looking at the mean absolute error over the forecast duration, it increased as the forecast duration increased. This shouldn't be surprising, as the quote goes "prediction is very hard, especially about the future".
+
+But when we looked at the graph, there was a second source of variation. It appeared that the southern states - Victoria, Tasmania, South Australia - had a higher variation in mean absolute error as compared to the northern states.
+
+This is where I'm in danger of cosplaying as a meteorologist and being completely off the mark, but lets have a go. Looking back at the graph of the lowest mean temperature and the start of this article, taken from Tasmania in the south of Australia, what you may have noticed is that the profile of the lowest mean temperature looked different. To me eye it looked rougher and moved up and down far more as compared to the highest mean, which was from a location in the far north of Australia.
+
+Could this type of variation have an influence on the forecast accuracy? Can we quantify it?
+
+## The 'Jaggedness' Index
+
+My guess would be as we go south, certain meteorological features that I would only be guessing at (weather coming off the Southern Ocean?) make the rises and falls in temperature less 'smooth' more varied, and thus more unpredictable.
+
+My thought is to create a 'jaggedness' index for each of the locations and each of the day-lagged forecast. 
+
+$$ J = \frac{1}{n - 1} \sum_{i=2}^{n} \left| t_i - t_{i-1} \right| $$
+
+Where \\(t_i\\) is the i'th temperature observation at a site, and \\(n\\) is the total number of observations. In plain English: the sum of the absolute differences between consecutive temperature observations, divided by the number of pairs of observations.
+
+```{r}
+site_jaggedness <-
+    temp_data |> 
+    group_by(wmo, state) |>
+    summarise(
+        jaggedness = sum(abs(diff(temperature)))/( n() - 1 ), 
+        .groups = 'drop'
+    ) 
+
+jagged_data <-
+    site_jaggedness |> 
+    right_join(forecast_lagged, by = c('wmo', 'state')) |> 
+    group_by(wmo, state, jaggedness, forecast_duration_names) |>
+    summarise(
+        mean_absolute_error = mean(abs(temp_diff)),
+        .groups = 'drop'
+    )
+```
+
+To give this some perspective, here are the temperatures over time for the locations with the highest and lowest jaggedness indexes:
+
+```{r}
+min_max_jagged <-
+    jagged_data |>
+    filter(
+        jaggedness == min(jaggedness) |
+        jaggedness == max(jaggedness)
+    ) |>
+    distinct(wmo, .keep_all = TRUE) |>
+    left_join(temp_data, by = c('wmo', 'state')) |>
+    left_join(weather_stations |> select(wmo, site_name), by = 'wmo') |>
+    mutate(site = glue("{site_name}, {state}")) 
+
+p1 <-
+    min_max_jagged |> 
+    ggplot(aes(request_datetime_utc, temperature, colour = site)) +
+    geom_point(size = .5) +
+    geom_line() +
+    facet_grid(vars(site), labeller = label_wrap_gen())+
+    theme(legend.position = 'none') +
+    labs(
+        title = "Sites with Minimum and Maximum 'Jaggedness'",
+        subtitle = "Temperature over Time",
+        x = 'Date/Time',
+        y = 'Temperature',
+        colour = 'Location'
+    )
+
+p2 <-
+    min_max_jagged |>
+    select(site, jaggedness) |>
+    distinct(site, .keep_all = TRUE) |> 
+    gt() |>
+    tab_header("Min/Max Site Jaggedness") |>
+    cols_label(
+        site = "Site",
+        jaggedness = "Jaggedness"
+    )
+
+# Print table
+p2
+# Print graph
+p1
+```
+
+We can now plot each locations index against its mean absolute error, and we'll transition of the day forecast durations. 
+
+```{r message=FALSE, warning=FALSE}
+jagged_data |> 
+    ggplot() +
+    geom_point(aes(jaggedness, mean_absolute_error, colour = state), size = 2) +
+    transition_states(forecast_duration_names, state_length = 6, transition_length = 12) +
+    ease_aes('linear') +
+    labs(
+        title = 'Temperature Jaggedness versus Forecast Accuracy',
+        subtitle = "Forecast Duration: {closest_state}",
+        x = 'Temperature Jaggedness',
+        y = 'Forecast Error',
+        colour = 'State'
+    ) 
+```
+We can see a reasonably linear relationship between this jaggedness index and the mean forecast error. Let's use these two features - duration and jaggedness - as parameters into a simple linear model and see if we can come up with a model that predicts the mean absolute forecast error.
+
+# Modeling
+
+
+To be honest, the jaggedness index isn't a great predictor, because you can only calculate it once you've got the temperature, and once you've got the temperature you can just calculate the forecast error directly! But let's just have a go, start simple, and see where we end up.
+
+We'll use Stan to create a simple linear model with two parameters: the jaggedness as a continuous variable, and the day-lagged forecast duration as a categorical index. Here's the full specification of the model:
+
+```{r comment=''}
+fcast_error_mdl <- cmdstan_model('model.stan')
+fcast_error_mdl
+```
+
+```{r}
+# Read in the test set for out-of-sample testing
+test_set <- read_rds('test_set.Rdata') |>
+    drop_na(temperature) |>
+    left_join(forecast_mapping, by = 'forecast_duration') |>
+    forecast_accuracy() 
+        
+test_jagged_data <-
+    site_jaggedness |> 
+    right_join(test_set, by = c('wmo', 'state')) |> 
+    group_by(wmo, state, jaggedness, forecast_duration_names) |>
+    summarise(
+        mean_absolute_error = mean(abs(temp_diff)),
+        .groups = 'drop'
+    )
+```
+
+```{r include=FALSE}
+fcast_error_fit <- fcast_error_mdl$sample(
+    data = compose_data(
+        jagged_data |> select(
+            duration = forecast_duration_names,
+            jaggedness,
+            mean_forecast_error = mean_absolute_error
+        ),
+        test_jagged_data |> select(
+            duration_t = forecast_duration_names,
+            jaggedness_t = jaggedness,
+            mean_forecast_error_t = mean_absolute_error
+        )
+    ),
+    seed = 3249,
+    chains = 4,
+    parallel_chains = 4,
+    step_size = 0.1,
+    refresh = 500,
+)
+```
+
+After sampling from the posterior (and performing some of the standard checks like trace plots and histograms that I'm not going to show here), we get our alpha and beta parameters (intercept and slope) for each of the indexes (where index 1 = 1 day forecast, index 2 = 2 day forecast, etc), as well as some other statistics about the distributions of each parameter. For completeness here's a table of all of the parameters;
+
+```{r message=FALSE, warning=FALSE}
+fcast_error_fit$summary(
+    variables = c('sigma', 'alpha', 'beta_jaggedness'),
+    c('mean', 'median', 'sd'),
+    quantiles = ~ quantile(., probs = c(0.025, 0.975))
+) |>
+    mutate(across(c(2:6), ~round(.x, digits = 2))) |> 
+    gt() |>
+    tab_header("Model Parameter: Posterior Distribution Statistics") |> 
+    cols_label(
+        variable = "Variable",
+        mean = 'Mean',
+        median = 'Median',
+        sd = 'Std. Dev',
+        '2.5%' = 'Lower 2.5%',
+        '97.5%' = 'Upper 97.5'
+    ) |>
+    cols_align('center') |> 
+    tab_style(
+        style = cell_text(weight = 'bold'),
+        locations = cells_column_labels()
+    )
+```
+
+I'm not going to go through each one, but let's take a look at index *[6]*: the six day forecast. The parameters tell us the following information:
+
+- *alpha[6]* - for a location with zero jaggedness (the intercept), you would expect on average a mean forecast error of 0.82, with a credible interval between .7 and .94.
+- *beta_jaggedness[6]* - for each increase of jaggedness by 1, you would expect on average the mean forecast error to go up by 4 degrees, with a 95% credible interval of between 3.56 and 4.46. 
+
+Tables are hard to interpret, so instead what we'll do is plot all a line for each of the parameters drawn from the posterior, which shows the range of values the model believes parameters could be. As before, we transition through each of the forecast durations:
+
+```{r}
+fcast_error_fit |>
+    spread_draws(alpha[i], beta_jaggedness[i]) |>
+    mutate(i = as_factor(i)) |>
+    mutate(i = fct_recode(i, '1 day' = '1', '2 day' = '2', '3 day' = '3', '4 day' = '4', '5 day' = '5', '6 day' = '6')) |> 
+    ggplot() +
+    geom_point(data = jagged_data |> rename(i = forecast_duration_names), aes(jaggedness, mean_absolute_error, colour = i)) +
+    geom_abline(aes(intercept = alpha, slope = beta_jaggedness, colour = i), alpha = .01) +
+    transition_states(i, state_length = 6, transition_length = 12) +
+    ease_aes('linear') +
+    labs(
+        title = "Model Credible Values over Forecast Duration",
+        subtitle = "Forecast Duration: {closest_state}",
+        x = 'Temperature Jaggedness',
+        y = 'Mean Forecast Error',
+        colour = 'State'
+    )
+        
+```
+Some reasonably tight credible intervals for the parameters. But there's one parameter left we haven't looked at: sigma, the residual standard deviation. It's a measure of how far the observed data deviates from our fitted values We've used a single parameter, so it doesn't vary across the forecast indexes/durations.
+
+We can check how well our model has done by performing posterior predictive checks. In our Stan model we generated random data for each of the observations using all of the alpha, beta, and sigma values drawn from the posterior. We've then limited the data to those values that are within the 95% credible interval, and plotted each one in green. We've then overlaid the real observations in orange over the top.
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_rep[i]) |>
+    sample_frac(.2) |> 
+    filter(
+        y_rep < quantile(y_rep, .975) & y_rep > quantile(y_rep, .025)
+    ) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(jagged_data) |>
+    unnest(data) |>
+    ggplot() +
+    geom_point(aes(jaggedness, y_rep, colour = "Predictved"), alpha = .1, size = .1) +
+    geom_point(aes(jaggedness, mean_absolute_error, colour = "Real"), size = .1) +
+    facet_wrap(vars(forecast_duration_names)) +
+    labs(
+        title = "Posterior Predictive Interval - In-Sample",
+        subtitle = "95% Credible Interval for Posterior Predictions",
+        x = "Jaggednesss",
+        y = "Mean Forecast Error",
+        colour = "Type"
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 2, alpha = 1)))
+```
+Most of our data lies within the bands of the generated data, which is good. However there's a couple of things that don't look quite right: the first is that there's a bias in the model. Almost all of the values which don't fit are above the bands, rather than below. Our model, which uses normal residuals/errors, assumes that the errors should be approximately symmetric, which they are not.
+
+Secondly, those values above the bands are a long way from where the model would expect them to be. So our model doesn't do a great job of predicting the mean forecast error based on jaggedness for those sites.
+
+If we calculate the 95% interval of our generated values from the model, then calculate the percentage of recorded values that fall in that range, we get the following results:
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_rep[i]) |>
+    sample_frac(.5) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(jagged_data) |>
+    unnest(data) |>
+    mutate(q = mean_absolute_error > quantile(y_rep, .025) & mean_absolute_error < quantile(y_rep, .975)) |>
+    group_by(forecast_duration_names) |> 
+    summarise(q95 = scales::label_percent(accuracy = .1)(sum(q)/n())) |>
+    gt() |>
+    tab_header(
+        title = "Real Values Within 95% Credible Interval",
+        subtitle = "Training Data Set"
+    ) |>  
+    cols_label(
+        forecast_duration_names = "Forecast Duration",
+        q95 = "Percentage"
+    ) |>
+    cols_align("center")
+```
+
+That's good, at least the range of the posterior predictive distribution is close to our observed data. But it also shouldn't be too surprising: the model was trained off this data.
+
+The real test of the model is how it performs on out of sample data. I've held out ~3 weeks of temperature/forecast accuracy data from the time period immediately after the training set. Each location is still using the jaggedness calculated from the training temperatures. Let's take a look at how it performs: 
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_test[i]) |>
+    sample_frac(.2) |> 
+    filter(
+        y_test < quantile(y_test, .975) & y_test > quantile(y_test, .025)
+    ) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(test_jagged_data) |>
+    unnest(data) |>
+    ggplot() +
+    geom_point(aes(jaggedness, y_test, colour = "Predicted"), alpha = .1, size = .1) +
+    geom_point(aes(jaggedness, mean_absolute_error, colour = "Real"), size = .1) +
+    facet_wrap(vars(forecast_duration_names)) +
+    labs(
+        title = "Posterior Predictive Validation - Out of Sample Data",
+        subtitle = "95% Credible Interval for Posterior Predictions",
+        x = "Jaggednesss",
+        y = "Mean Forecast Error",
+        colour = "Type"
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 2, alpha = 1)))
+```
+
+```{r}
+fcast_error_fit |>
+    spread_draws(y_test[i]) |>
+    sample_frac(.5) |> 
+    group_by(i) |>
+    nest() |>
+    bind_cols(test_jagged_data) |>
+    unnest(data) |>
+    mutate(q = mean_absolute_error > quantile(y_test, .025) & mean_absolute_error < quantile(y_test, .975)) |>
+    group_by(forecast_duration_names) |> 
+    summarise(q95 = scales::label_percent(accuracy = .1)(sum(q)/n())) |>
+    gt() |>
+    tab_header(
+        title = "Real Values Within 95% Credible Interval",
+        subtitle = "Test (Out-of-Sample) Data Set"
+    ) |>  
+    cols_label(
+        forecast_duration_names = "Forecast Duration",
+        q95 = "Percentage"
+    ) |>
+    cols_align("center")
+```
+Not bad, but not great. Outside of the three day forecast it starts to fall away.
+
+# Summary
+
+Phew, that one just kept going and going! A recap: we gathered 8 weeks of temperature and temperature forecasts from around Australia, and looked at how well the forecasts performed depending on how far out the forecast was. We then created a summary statistic - jaggedness - and attempted to create a linear model for predicting forecast accuracy based on this, as well as forecast duration. It did OK, but it's probably a little simplistic, and perhaps not much use in the long term.
+
+A couple of weeks ago my wife asked me "why are you even doing this?". Good question. I think there are two reasons:
+
+The first is that I just wanted to know the answer. How exactly does the BOM perform at forecasting temperature? Now we've got some data, and some outputs. It's a small sample, and we don't know how it changes over time, but it's something we can point to. Whether it's qualitatively good or bad I don't know, I'll leave those kind of judgements to the reader.
+
+The second reason is that, it doing these kinds posts, I get to put into practice things I've read about in an interesting way and consolidate a lot of knowledge. Here's a few of the things I've got a better idea of now:
+
+- The [read_fwf()](https://readr.tidyverse.org/reference/read_fwf.html) function in the readr package
+- The [req_perform_parallel()](https://httr2.r-lib.org/reference/req_perform_parallel.html) function in the httr2 package for speeding up bulk requests to websites.
+- Writing [systemd timers](https://wiki.archlinux.org/title/Systemd/Timers)
+- [Timezone files](https://www.dedoimedo.com/computers/linux-timezone.html) in Linux
+- Using indexes for categorical variables in Stan models.
+- Using a test set in a Stan model.
+
+To me, those reasons are as good as any.
+
+
+

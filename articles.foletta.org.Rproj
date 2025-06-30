@@ -1,4 +1,5 @@
 Version: 1.0
+ProjectId: e6c96927-2e5f-4065-8370-837460e1dc8b
 
 RestoreWorkspace: Default
 SaveWorkspace: Default
@@ -13,3 +14,5 @@ RnwWeave: Sweave
 LaTeX: pdfLaTeX
 
 BuildType: Website
+
+UseNativePipeOperator: Yes
