@@ -7,7 +7,7 @@ categories: [R Forecasting Weather]
 
 In this article we're going to be taking a look at the forecast accuracy of Australia's Bureau of Metorology (BOM), but before starting a quick preface.
 
-I had trepidation writing this article, and it almost didn't get off the ground. I'm not a meteorologist, and I'm also a data science dilettante. Wading into this particular field without foundational knowledge felt very arrogant, and to be frank I was worried I'd make a fool out of myself. But after having a chat with one of my great friends who has a Phd in meteorology, she assuaged some of my apprehensions, so here we are.
+I had trepidation writing this article, and it almost didn't get off the ground. I'm not a meteorologist, and I'm also a data science dilettante. Wading into this particular field without foundational knowledge felt very arrogant, and to be frank I was worried I'd make a fool out of myself. But after having a chat with one of my great friends who has a Phd in meteorology, she assuaged some of my apprehensions, so here we are. Although there’s still plenty of room for foolishness! 
 
 This post came about after searching and being unable to find historical information on the BOM's forecasting performance. It may be that I just missed it somewhere, so if someone knows where this may be, please reach out.  
 
@@ -15,7 +15,7 @@ This post came about after searching and being unable to find historical informa
 
 This is a hefty article, so here's a quick rundown of what we'll cover before diving in: 
 
-* The building temperature and 1-6 day temperature forecast datasets from 526 locations around Australia.
+* Building temperature and 1-6 day temperature forecast datasets from 526 locations around Australia.
 * Determining and visualising the accuracy of these forecasts.
 * Creating a 'jaggedness' metric per site.
 * Using Bayesian methods to build a model for predicting forecast accuracy.
@@ -217,7 +217,7 @@ temp_data |>
         override.aes = list(size = 2, alpha = 1),
     ))
 ```
-Unsurpirisingly we've got a city in the north of the country, and a mountain in the very south. Take note of the different shapes of these graphs, we'll discuss this later on in the article.
+Unsurprisingly we've got a city in the north of the country, and a mountain in the very south. Take note of the different shapes of these graphs, we'll discuss this later on in the article.
 
 # Forecast Data
 
@@ -301,6 +301,7 @@ Let's look at some statistics across all of the weather stations: the mean error
 forecast_lagged_summary |>
     mutate(forecast_duration = as.duration(forecast_duration)) |> 
     select(forecast_duration, mean_forecast_error, mean_absolute_error, sd_forecast_error, nine_five_quantile) |> 
+    mutate(across(c(2:4), ~round(.x, digits = 2))) |> 
     gt() |>
     tab_header("Forecast Error Statistics by Forecast Duration") |> 
     cols_align('center') |> 
