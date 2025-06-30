@@ -1,0 +1,11 @@
+[Unit]
+Description="Timer for the BOM forecast service"
+
+[Timer]
+Unit=bom-forecast.service
+OnBootSec=5min
+#OnCalendar=*:0/10
+OnCalendar=*-*-* *:05,15,25,35,45,55:00
+
+[Install]
+WantedBy=timers.target
