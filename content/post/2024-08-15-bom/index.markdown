@@ -576,9 +576,7 @@ My guess would be as we go south, certain meteorological features that I would o
 
 My thought is to create a ‘jaggedness’ index for each of the locations and each of the day-lagged forecast.
 
-``` math
- J = \frac{1}{n - 1} \sum_{i=2}^{n} \left| t_i - t_{i-1} \right| 
-```
+$$ J = \frac{1}{n - 1} \sum_{i=2}^{n} \left| t_i - t_{i-1} \right| $$
 
 Where \\(t_i\\) is the i’th temperature observation at a site, and \\(n\\) is the total number of observations. In plain English: the sum of the absolute differences between consecutive temperature observations, divided by the number of pairs of observations.
 
