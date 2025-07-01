@@ -1,5 +1,5 @@
 ---
-title: "BOM On Target: Assessing the Beaureau's Forecast Accuracy"
+title: "BOM On Target: Assessing the Bureau's Forecast Accuracy"
 author: 'Greg Foletta'
 date: '2025-06-29'
 categories: [R Forecasting Weather]
