@@ -10,3 +10,9 @@ HUGO_VERSION = "0.69.2"
 
 [context.branch-deploy.environment]
 HUGO_VERSION = "0.69.2"
+
+# Fix the CORS issue between articles.foletta.org and blog.foletta.net
+[[headers]]
+  for = "/fontawesome/webfonts/fa-brands-400.woff2" 
+  [headers.values]
+    access-control-allow-origin = "https://articles.foletta.org"
