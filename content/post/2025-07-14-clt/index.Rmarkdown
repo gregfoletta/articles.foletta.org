@@ -1,0 +1,179 @@
+---
+title: CLT
+author: Greg Foletta
+date: '2025-07-14'
+slug: []
+categories: []
+tags: []
+---
+
+```{r}
+library(tidyverse)
+library(tictoc)
+library(gt)
+```
+
+
+```{r}
+random_data <- tibble(
+    uniform = runif(10000, min = -20, max = 20),
+    normal = rnorm(10000, mean = 0, sd = 4),
+    binomial = rbinom(10000, size = 1, prob = .5),
+    beta = rbeta(10000, shape1 = .9, shape2 = .5),
+    exponential = rexp(10000, .4),
+    chisquare = rchisq(10000, df = 2),
+)
+```
+
+```{r}
+random_data_l <-
+    random_data |>
+    pivot_longer(cols = everything(), names_to = 'distribution') 
+```
+
+```{r}
+random_data_l |>
+    ggplot() + 
+    geom_histogram(aes(value), binwidth = .3) +
+    facet_wrap(vars(distribution), scales = 'free')
+```
+
+```{r}
+sample_size <- 60
+
+random_means <- 
+    map(1:20000, 
+        \(x) slice_sample(random_data, n = sample_size) |>
+            summarise(across(everything(), ~mean(.x) ))
+    ) |> 
+    list_rbind()
+```
+
+
+```{r}
+random_means |>
+    pivot_longer(everything(), names_to = 'distribution') |>
+    ggplot() +
+    geom_histogram(aes(value), binwidth = .01) +
+    facet_wrap(vars(distribution), scales = 'free_x')
+```
+
+```{r}
+random_data_stats <-
+    random_data_l|>
+    group_by(distribution) |>
+    summarise(
+        population_mean = mean(value),
+        population_sd = sd(value),
+        n = n()
+    )
+
+random_data_stats |>
+    gt()
+```
+
+```{r}
+# CLT Calculation
+clt <-
+    random_means |>
+    pivot_longer(
+        cols = everything(),
+        names_to = 'distribution',
+        values_to = 'sample_mean'    
+    ) |>
+    left_join(random_data_stats, by = 'distribution') |>
+    mutate(clt = (sample_mean - population_mean) / (population_sd / sqrt(n) )) 
+
+clt |> 
+    ggplot() +
+    geom_histogram(aes(clt), binwidth = 1) +
+    facet_wrap(vars(distribution), scales = 'free')
+```
+
+```{r}
+clt |>
+    ggplot(aes(sample = clt, colour = distribution)) +
+    geom_qq_line() +
+    geom_qq(size = .3) +
+    facet_wrap(vars(distribution)) +
+    theme(legend.position = 'none')
+```
+
+# In Practice
+
+```{r}
+take_random_sample <- function(data, sample_size) {
+    slice_sample(.data = data, n = sample_size) |>
+    summarise(across(everything(), list(sample_mean = mean, sample_sd = sd)))
+}
+
+small_sample_size = 10
+
+repeated_samples <-
+    map(1:10000, ~take_random_sample(random_data, sample_size = small_sample_size)) |>
+    list_rbind() |> 
+    pivot_longer(
+        everything(),
+        names_to = c('distribution', '.value'),
+        names_pattern = '(\\w+)_(\\w+_\\w+)'
+    ) |>
+    left_join(random_data_stats, by = 'distribution') |>
+    select(-c(n, population_sd))
+```
+
+```{r}
+repeated_samples |> slice_head(n = 6) |> gt()
+```
+
+```{r}
+conf_intervals <-
+    repeated_samples |> 
+    mutate(
+        upper_ci = sample_mean + qnorm(0.975) * sample_sd / sqrt(small_sample_size),
+        lower_ci = sample_mean - qnorm(0.975) * sample_sd / sqrt(small_sample_size),
+        within_ci = population_mean < upper_ci & population_mean > lower_ci
+    )
+```
+
+```{r}
+conf_intervals |>
+    group_by(distribution) |> 
+    summarise(
+        percent_within_ci = mean(within_ci))
+``` 
+# Using the t-distribution
+
+```{r}
+repeated_samples |> 
+    mutate(
+        upper_ci = sample_mean + qt(p = 0.975, df = small_sample_size - 1) * (sample_sd / sqrt(small_sample_size)),
+        lower_ci = sample_mean - qt(p = 0.975, df = small_sample_size - 1) * (sample_sd / sqrt(small_sample_size)),
+        within_ci = population_mean < upper_ci & population_mean > lower_ci
+    ) |> 
+    group_by(distribution) |> 
+    summarise(percent = mean(within_ci))
+```
+
+# Larger Sample Size
+
+```{r}
+large_sample_size <- 60
+
+map(1:10000, ~take_random_sample(random_data, sample_size = large_sample_size)) |>
+    list_rbind() |> 
+    pivot_longer(
+        everything(),
+        names_to = c('distribution', '.value'),
+        names_pattern = '(\\w+)_(\\w+_\\w+)'
+    ) |>
+    left_join(random_data_stats, by = 'distribution') |>
+    select(-c(n, population_sd)) |> 
+    mutate(
+        upper_ci = sample_mean + qnorm(0.975) * (sample_sd / sqrt(large_sample_size)),
+        lower_ci = sample_mean - qnorm(0.975) * (sample_sd / sqrt(large_sample_size)),
+        within_ci = population_mean < upper_ci & population_mean > lower_ci
+    ) |> 
+    group_by(distribution) |> 
+    summarise(percent = mean(within_ci))
+```
+

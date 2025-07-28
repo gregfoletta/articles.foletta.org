@@ -1,0 +1,65 @@
+---
+title: Timing in the Global BGP Table
+author: Greg Foletta
+date: 2/7/2025
+slug: []
+categories: []
+tags: []
+---
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+
+```{r}
+```
+
+```{r}
+# Load and Clean
+bgp <- 
+    read_rds(here('content', 'post', '2025-07-02-global-bgp-timing', 'ipv4_advertisements.Rdata')) |>
+    mutate(
+        datetime = as.POSIXct(recv_time),
+        time_window = floor_date(datetime, '15 seconds')
+    )|>
+    add_count(time_window, peer_name) |> 
+    select(datetime, recv_time, time_window, everything()) |>
+    filter(n < 20000) |>
+    select(-n) |> 
+    arrange(datetime) |>
+    mutate(
+        asns_unique = map(asns, ~unique(.x)),
+        n_unique_as = map_int(asns_unique, ~length(.x))
+    )
+    
+```
+
+```{r}
+bgp_unique <-
+    bgp |>
+    add_count(peer_name, nlri) |>
+    filter(n == 1) |>
+    select(-n)
+```
+```{r}
+bgp_joined <-
+    inner_join(
+        bgp_unique |> filter(peer_name == 'vinton'),
+        bgp_unique |> filter(peer_name == 'lukasz'),
+        by = c('nlri')
+    )
+```
+
+```{r}
+bgp_joined <-
+    bgp_joined |> 
+    mutate(delay = datetime.x - datetime.y)
+
+bgp_joined |>
+    filter(delay < 20 & delay > - 200) |> 
+    ggplot() +
+    geom_histogram(aes(delay), binwidth = 1)
+```
+
