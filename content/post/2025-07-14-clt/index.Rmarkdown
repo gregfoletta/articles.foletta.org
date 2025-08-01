@@ -9,6 +9,7 @@ tags: []
 
 ```{r include=FALSE}
 library(tidyverse)
+library(gganimate)
 library(tictoc)
 library(gt)
 ```
@@ -106,13 +107,13 @@ population_data_stats |>
 clt <-
     random_means |>
     left_join(population_data_stats, by = 'distribution') |>
-    mutate(clt = (sample_mean - population_mean) / (population_sd / sqrt(n) ))
+    mutate(clt = (sample_mean - population_mean) / (population_sd / sqrt(sample_size) ))
 ```
 
 ```{r echo=FALSE}
 clt |> 
     ggplot() +
-    geom_histogram(aes(clt), binwidth = 1) +
+    geom_histogram(aes(clt), binwidth = .1) +
     facet_wrap(vars(distribution))
 ```
 
@@ -156,6 +157,7 @@ conf_intervals <-
 
 ```{r echo=FALSE}
 conf_intervals |> 
+    arrange(desc(percent_within_ci)) |> 
     gt() |> 
     fmt_percent(percent_within_ci) |>
     cols_label(
@@ -175,7 +177,8 @@ conf_intervals <-
     group_by(distribution) |> 
     summarise(percent_within_ci = mean(within_ci))
 ```
-```{r}
+
+```{r echo=FALSE}
 conf_intervals |> 
     gt() |> 
     fmt_percent(percent_within_ci) |>
@@ -201,11 +204,61 @@ conf_intervals <-
 
 ```{r echo=FALSE}
 conf_intervals |> 
+    arrange(desc(percent_within_ci)) |> 
     gt() |> 
     fmt_percent(percent_within_ci) |>
     cols_label(
         'distribution' = 'Distribution',
         'percent_within_ci' = '% Within CI'
     )
+```
+
+```{r}
+increasing_sample_size <-
+    # Sample sizes of 1 to 50
+    map(
+        1:50,
+        \(y) {
+            # 1000 sample means
+            map(1:1000, ~take_random_sample(population_data, sample_size = y)) |>
+            # Bind them all together
+            list_rbind() |> 
+            # Wide to long per distribution
+            pivot_longer(
+                everything(),
+                names_to = c('distribution', '.value'),
+                names_pattern = '(\\w+)_(\\w+_\\w+)'
+            ) |>
+            # Add in our population means and SDs
+            left_join(population_data_stats, by = 'distribution') |>
+            # Add sample size
+            mutate(sample_size = y) |> 
+            # Normalise to -> N(0,1)
+            mutate(clt = (sample_mean - population_mean) / (population_sd / sqrt(sample_size) )) 
+        }
+    ) |>
+    list_rbind() 
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-
+    increasing_sample_size |>
+    filter(distribution %in% c('normal', 'exponential')) |> 
+    ggplot(aes(sample = clt, colour = distribution)) +
+    geom_qq() +
+    geom_qq_line() +
+    #facet_grid(vars(distribution)) +
+    transition_states(sample_size, state_length = 1, transition_length = 10) +
+    labs(
+        title = 'Sample Mean Q-in-Q Comparison - Exponential vs Normal',
+        subtitle = '1000 means from each distribution of of sample size {closest_state}',
+        x = 'Theoretical Quantiles',
+        y = 'Sample Quantiles',
+        colour = 'Distribution'
+    ) 
+    
+
+p |> animate(nframes = 300)
 ```
 
