@@ -14,6 +14,33 @@ library(tictoc)
 library(gt)
 ```
 
+I did a lot of maths units at uni — PDEs, vector calculus, discrete maths, linear algebra — but I always eschewed statistics subjects. Perhaps it was a case of being young and not accepting uncertainty, because 20 years later, I find statistics, particularly Bayesian statistics, fascinating.
+
+One problem with my self-directed journey is that there's foundational knowledge has come to me in drips, and the most foundational is the *Central Limit Theorem*. In this post I don't want delve into the theory of the CLT, proofs or extended descriptions. What I want to do is use simulation and visualisation to help understand how it works. Writing this article is predominantly a process to help me understand the CLT; you're just here for the ride. Hopefully that ride can help you get where you need to go as well.
+
+# A Brief Recap
+
+I don't this to be like an online recipe with pages of back story before you get to the meat and bones, but let's quickly recap state what the CLT means:
+
+> "If you take samples of size *n* from a distribution and calculate the sample mean for each, as *n* gets approaches infinity, the distribution of sample means approaches a normal distribution."
+
+For the classic CLT there's a couple of assumptions about the source distribution: 
+
+- The sample is drawn independently (no autocorrelation like in a time series).
+- All the data points are drawn from the same distribution ("independent and identically distributed").
+- The distribution has a finite mean and variance. 
+
+There are other versions of the CLT in which some of these assumptions are relaxed, but we'll focus on the classic version in this post.
+
+Putting it math terms:
+
+$$ \frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}}  \overset{d}\longrightarrow \mathcal{N}(0, 1)$$
+
+# Simulating
+
+Now we're not the kind of people to just accept something because someone threw some fancy Greek symbols at us. We want to simulate this to give ourselves some confidence it works in practice.
+
+Let's create a tibble of ten-thousand random values from six different distributions, which we'll call our 'population':
 
 ```{r}
 # 10,000 draws from six different distributions
@@ -31,9 +58,11 @@ population_data <- tibble(
 population_data |> 
     slice_head(n = 5) |> 
     gt() |>
-    tab_header(title = "Six Distributions - First Five Rows")
+    tab_header(title = "Six Distributions - Ten-Thousand Values, First Five Rows")
 ```
 
+This 'wide' tibble is good for sampling from, but we'll also transform it into a long version which will have other uses (note the '_l' suffix).
+ 
 ```{r}
 # Long version of random data
 population_data_l <-
@@ -47,19 +76,28 @@ population_data_l |>
     slice_head(n = 1) |> 
     ungroup() |> 
     gt() |>
-    tab_header("Six Distributions - Post 'pivot_longer() - First Value")
+    tab_header("Six Distributions - Post 'pivot_longer() - First Value of Each")
 ```
+
+Here's a histogram of each of the population distributions:
 
 ```{r echo=FALSE}
 population_data_l |>
     ggplot() + 
     geom_histogram(aes(value), binwidth = .3) +
-    facet_wrap(vars(distribution), scales = 'free')
+    facet_wrap(vars(distribution), scales = 'free') +
+    labs(
+        title = 'Histograms - Population Distributions',
+        subtitle = 'Bin Width of .3'
+    )
 ```
+Next we define a function `take_random_sample_mean()` which takes a sample from all of the population distributions and calculates the mean.
+
+Using this function we take 20,000 sample means of size 60, bind it all together into a single data frame, and shape it into a long version.
 
 ```{r}
 # Define a function to take a random sample from our data
-take_random_sample <- function(data, sample_size) {
+take_random_sample_mean <- function(data, sample_size) {
     slice_sample(.data = data, n = sample_size) |>
     summarise(across(everything(), list(sample_mean = mean, sample_sd = sd)))
 }
@@ -67,9 +105,11 @@ take_random_sample <- function(data, sample_size) {
 sample_size <- 60
 
 # Draw 20,000 means of size 60 from our random data
-random_means <- 
-    map(1:20000, ~take_random_sample(population_data, sample_size = sample_size)) |> 
+sample_means <- 
+    map(1:20000, ~take_random_sample_mean(population_data, sample_size = sample_size)) |> 
+    # Bind the sample means into a single tibble
     list_rbind() |> 
+    # Move to a long version of the data
     pivot_longer(
         everything(),
         names_to = c('distribution', '.value'),
@@ -77,13 +117,19 @@ random_means <-
     ) 
 ```
 
+Here's the resulting histograms with only the x-axis free to change scale. The beta and binomial look pretty normal, and the others maybe do? But it's a bit hard to tell.
 
 ```{r echo=FALSE}
-random_means |>
+sample_means |>
     ggplot() +
     geom_histogram(aes(sample_mean), binwidth = .01) +
-    facet_wrap(vars(distribution), scales = 'free_x')
+    facet_wrap(vars(distribution), scales = 'free_x') +
+    labs(
+        title = "Histogram of Sample Means from Population Distributions",
+        subtitle = "20,000 means, each of sample size 60, x-axis free"
+    )
 ```
+If you recall the formula at the start, to get to a standard normal we also need to subtract the population mean and divide by the population standard deviation over the square-root of n. Using the long version of the population data we can calculate those statistics:
 
 ```{r}
 population_data_stats <-
@@ -102,20 +148,32 @@ population_data_stats |>
     tab_header('Random Means - Statistics')
 ```
 
+Joining each of those statistics into the sample means by their distribution allows us to scale to the standard normal:
 ```{r}
 # CLT Calculation
 clt <-
-    random_means |>
+    sample_means |>
+    # Join in the popultion mean, sd, and n
     left_join(population_data_stats, by = 'distribution') |>
-    mutate(clt = (sample_mean - population_mean) / (population_sd / sqrt(sample_size) ))
+    # Scale to the standard normal
+    mutate(
+        clt = (sample_mean - population_mean) / (population_sd / sqrt(sample_size) )
+    )
 ```
 
 ```{r echo=FALSE}
 clt |> 
     ggplot() +
     geom_histogram(aes(clt), binwidth = .1) +
-    facet_wrap(vars(distribution))
+    facet_wrap(vars(distribution)) +
+    labs(
+        title = "Histogram of Standardised Sample Means from Population Distributions",
+        subtitle = "20,000 means, each of sample size 60",
+        x = "Sample Mean",
+        y = "Count"
+    )
 ```
+That's better: they now at least all look the same, except for the binomial which ends up having higher counts because of its integer values. While you can *kind of* guess that they're normal from a histogram, we can get a better sense of normality by using a quantile-quantile plot. The standard normal quantiles are on the x-axis, and our sample mean quantiles are on the y-axis.
 
 ```{r echo=FALSE}
 clt |>
@@ -123,16 +181,41 @@ clt |>
     geom_qq_line() +
     geom_qq(size = .3) +
     facet_wrap(vars(distribution)) +
-    theme(legend.position = 'none')
+    theme(legend.position = 'none') +
+    labs(
+        title = "Q-Q Plot - Sample Mean Distributions",
+        subtitle = "Standard Normal Reference Distribution",
+        x = "Theoretical",
+        y = "Sample"
+    )
 ```
+I think you'd agree that they all track pretty closely to a standard normal, though the chi-square and exponential do tend to diverge slightly at the ends. We'll dive a bit deeper into that later in the post.
+
+Let's summarise: we took twenty-thousand sample means of size sixty from six wildly different distributions, and we were able to see that the distributions of these sample means approximately followed a normal distribution. This is the essence of the central limit theorem, which allows us to use statistical methods for normal distributions on problems that may involve wildly different population distributions.
 
 # In Practice With Mistakes
 
-```{r}
-small_sample_size <- 10
+That's all well and good if you've got the population means and standard deviation, but in most cases you're not going to have that. You're also likely not going to have the resources to take twenty-thousand different samples.
 
+So you interview six people about a fact (weight, voting intentions, doesn't matter) and take the average: your sample mean. You want to find an interval around your sample mean that would give you the classic 95% confidence that the *true mean* of the population is somewhere in the interval.
+
+So you use a bit of algebra and move some term around in the CLT formula to give you this:
+
+$$ \bar{X} \pm z_.025 \cdot \ \frac{s}{\sqrt{n}}  $$ 
+where $z_.025$ is the critical value (aka `qnorm()` in R) and $s$ is the sample standard deviation.
+
+We're in frequentist territory here, so we can't say something like "there's an 89% probability that the true mean is in the interval". Why? Because in this frequentist realm, the true mean $\mu$ is a fixed value: it's either in the interval, or it's not.
+
+What we can say is that if we were to repeat this process many times, in the long run we should see the true mean within this confidence interval 89% of the time. So let's see if that works.
+
+We use a sample size of 6, taking the mean of these 6 samples from each of our population distributions 10,000 times.
+
+```{r}
+small_sample_size <- 6 
+
+# Ten-thousand random sample means of size six
 repeated_samples <-
-    map(1:10000, ~take_random_sample(population_data, sample_size = small_sample_size)) |>
+    map(1:10000, ~take_random_sample_mean(population_data, sample_size = small_sample_size)) |>
     list_rbind() |> 
     pivot_longer(
         everything(),
@@ -141,16 +224,18 @@ repeated_samples <-
     ) |>
     left_join(population_data_stats, by = 'distribution')
 ```
-
+For each of these samples from each of the distributions we calculate the 89% confidence interval. Because we know the true population mean, we can determine whether it is or is not within the interval. Finally, we calculate the percentage that fall within.
 
 ```{r}
 conf_intervals <-
-    repeated_samples |> 
+    repeated_samples |>
+    # Calculate CIs and whether CI contains the true population mean
     mutate(
         upper_ci = sample_mean + qnorm(0.975) * sample_sd / sqrt(small_sample_size),
         lower_ci = sample_mean - qnorm(0.975) * sample_sd / sqrt(small_sample_size),
         within_ci = population_mean < upper_ci & population_mean > lower_ci
     ) |> 
+    # Determine percentage of CI that contain the true mean
     group_by(distribution) |> 
     summarise(percent_within_ci = mean(within_ci))
 ```
@@ -165,6 +250,12 @@ conf_intervals |>
         'percent_within_ci' = '% Within CI'
     )
 ```
+
+Uh oh! We're way off our 95% here, what happened? 
+
+The issue here is that we've estimated the population standard deviation using our sample standard deviation, which increases the uncertainty. So in this scenario the CLT approximates a t-distribution with n-1 degrees of freedom. If this feels a bit like I've plucked it out of the sky, you'd be right: I'm still trying to solidify the 'why' of this. But let's leave that tot he side and continue.
+
+We'll re-run our confidence intervals, but this time we use `qt()`, the t-distribution quantile function. 
 
 ```{r}
 conf_intervals <-
@@ -180,6 +271,7 @@ conf_intervals <-
 
 ```{r echo=FALSE}
 conf_intervals |> 
+    arrange(desc(percent_within_ci)) |> 
     gt() |> 
     fmt_percent(percent_within_ci) |>
     cols_label(
@@ -188,15 +280,16 @@ conf_intervals |>
     )
 ```
 
+That looks a bit better! The binomial, normal and uniform distributions are close to our 95% value, but our heavily skewed beta, exponential a chi-square still aren't up to scratch. They're going to need more samples. Helpfully with more samples, our t-distribution is going to appraoch a normal distribution. We'll go back and use our original sample mean data set, which if you recall used a sample size of 60.
 
 ```{r}
 conf_intervals <-
-    random_means |> 
+    sample_means |> 
     left_join(population_data_stats, by = 'distribution') |>
     mutate(
         upper_ci = sample_mean + qnorm(0.975) * (sample_sd / sqrt(sample_size)),
         lower_ci = sample_mean - qnorm(0.975) * (sample_sd / sqrt(sample_size)),
-        within_ci = population_mean <= upper_ci & population_mean > lower_ci
+        within_ci = population_mean < upper_ci & population_mean > lower_ci
     ) |> 
     group_by(distribution) |> 
     summarise(percent_within_ci = mean(within_ci))
@@ -213,14 +306,19 @@ conf_intervals |>
     )
 ```
 
+Looking even better, but even with a sample size of 60, the skewed distirbutions are still slightly under the mark.
+
+What I'm now interested to see is how these skewed distributions behave as the sample size increased. We'll use the same process as above, but we wrap another loop around it which increasesd the sample size each time, going up in powers of two. So we end up with 1000 sample means of size 1, 1000 of size 2, etc, all the way up to a sample size of 1024.
+
 ```{r}
 increasing_sample_size <-
-    # Sample sizes of 1 to 50
+    # Sample sizes increasing in powers of 2 (1, 2, 4, 8, ...)
     map(
-        1:50,
+        2^(0:10),
+        # Anonymous function
         \(y) {
             # 1000 sample means
-            map(1:1000, ~take_random_sample(population_data, sample_size = y)) |>
+            map(1:1000, ~take_random_sample_mean(population_data, sample_size = y)) |>
             # Bind them all together
             list_rbind() |> 
             # Wide to long per distribution
@@ -231,7 +329,7 @@ increasing_sample_size <-
             ) |>
             # Add in our population means and SDs
             left_join(population_data_stats, by = 'distribution') |>
-            # Add sample size
+            # Add sample size as a column
             mutate(sample_size = y) |> 
             # Normalise to -> N(0,1)
             mutate(clt = (sample_mean - population_mean) / (population_sd / sqrt(sample_size) )) 
@@ -240,25 +338,28 @@ increasing_sample_size <-
     list_rbind() 
 ```
 
+With this data we can create an animation of a Q-Q plot for the uniform versus exponential distributions, showing how the distribution of sample means changes as the sample size increases. You'll see the distribution approaching the standard normal distribution.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 p <-
     increasing_sample_size |>
-    filter(distribution %in% c('normal', 'exponential')) |> 
+    filter(distribution %in% c('uniform', 'exponential')) |> 
     ggplot(aes(sample = clt, colour = distribution)) +
     geom_qq() +
     geom_qq_line() +
     #facet_grid(vars(distribution)) +
-    transition_states(sample_size, state_length = 1, transition_length = 10) +
+    transition_states(sample_size, state_length = 1, transition_length = 5) +
     labs(
-        title = 'Sample Mean Q-in-Q Comparison - Exponential vs Normal',
-        subtitle = '1000 means from each distribution of of sample size {closest_state}',
+        title = 'Sample Mean Q-in-Q Comparison - Exponential vs Uniform',
+        subtitle = '1000 means from each distribution of of sample size {previous_state}',
         x = 'Theoretical Quantiles',
         y = 'Sample Quantiles',
         colour = 'Distribution'
     ) 
     
 
-p |> animate(nframes = 300)
+p |> animate(nframes = 200)
 ```
+You'll see the distribution of sample means from the uniform distribution approaches a normal much faster than the expontential. To my eye it's looking pretty good at a sample size of 8. The exponential however takes much longer to converge, somewhere between 64 and 128 samples.
 
+# Summary
