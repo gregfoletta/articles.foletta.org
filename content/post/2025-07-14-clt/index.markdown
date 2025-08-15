@@ -1451,7 +1451,7 @@ where \\(\\bar{X}\\) is your sample mean, \\(z_.025\\) is the critical value (ak
 
 More simply, we take the sample mean and add/subtract the 97.5 quantile from a normal distribution times the standard error to get our 95% interval. Some may have noted a small mistake I’ve made here, which I’’ll leave in but will soon come to light.
 
-We’re in frequentist territory here, so while it’s tempting to say “there’s a 95% probability that the true mean is in the interval”, we shouldn’t. Why? Because to a frequentist, the true mean \\(\\mu\\) is a fixed value: it’s either in the interval or it’s not, we can’t assign a probability to the population mean. What we should say is that if we were to repeat the sampling process many times, in the long run we should see the true mean within this confidence interval 95% of the time. We can simulate this to see if that is true.
+We’re in frequentist territory here, so while it’s tempting to say “there’s a 95% probability that the true mean is in the interval”, we shouldn’t. Why? Because to a frequentist, the true mean \\(\\mu\\) is a fixed value. We can’t assign a probability to the population mean, it's either in the interval or it's not. What we should say is that if we were to repeat the sampling process many times, in the long run we should see the true mean within this confidence interval 95% of the time. We can simulate this to see if that is true.
 
 We use a sample size of 6, taking the mean of these 6 samples from each of our population distributions 10,000 times.
 
@@ -2823,7 +2823,7 @@ increasing_sample_size <-
 With this data we can create an animation of a Q-Q plot for the uniform versus exponential distributions, showing how the distribution of sample means changes as the sample size increases. You’ll see the distribution approaching the standard normal distribution.
 
 ![](index_files/figure-html/unnamed-chunk-22-1.gif)<!-- -->
-ou’ll see the distribution of sample means from the uniform distribution approaches a normal much faster than the expontential. It’s very subjective, but I think the uniform stsrts looking reasonably good at a sample size of 8. The exponential however takes much longer to converge to a normal.
+You’ll see the distribution of sample means from the uniform distribution approaches a normal much faster than the expontential. It’s very subjective, but I think the uniform starts looking reasonably good at a sample size of 8. The exponential however takes much longer to converge to a normal.
 
 # Summary
 
