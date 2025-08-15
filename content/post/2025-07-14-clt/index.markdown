@@ -5,7 +5,7 @@ date: '2025-08-13'
 categories: [Statistics R]
 ---
 
-I completed a Computer Science degree at uni, and bundled a lot of maths subjects in as electives: partial differential equations, vector calculus, discrete maths, linear algebra. For some reason however I always avoided statistics subjects. Maybe there’s a story to be told about a young person finding uncertainty uncomfortable, because twenty years later I find statistics, particularly the Bayian flavour, really interesting.
+I completed a Computer Science degree at uni, and bundled a lot of maths subjects in as electives: partial differential equations, vector calculus, discrete maths, linear algebra. For some reason however I always avoided statistics subjects. Maybe there’s a story to be told about a young person finding uncertainty uncomfortable, because twenty years later I find statistics, particularly the Bayesian flavour, really interesting.
 
 One problem with a self-directed journey is that there’s foundational knowledge that has come to me in dribs and drabs, and one of the most foundational is the *Central Limit Theorem* (CLT). In this post I want to interrogate and explore the CLT using simulation and visualisation in an attempt to understand how it works in practice, not in theory. This is predominantly a process to help me better understand the CLT; you’re just here for the ride. Hopefully that ride can help you get where you need to go as well.
 
