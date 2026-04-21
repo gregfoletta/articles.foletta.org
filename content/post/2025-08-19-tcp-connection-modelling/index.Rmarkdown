@@ -76,7 +76,7 @@ packets <-
    
 ```{r}
 # Filter out only completed connections
-packets <-
+packets_stream_data <-
     packets |>
     group_by(stream, protocol) |>
     filter(
@@ -88,8 +88,8 @@ packets <-
     
 ```{r}
 # Add a 1/-1 indicator when a connection is added/completed
-packets <-
-    packets |>
+packets_stream_data <-
+    packets_stream_data |>
     mutate(
         new_connection = case_when(
             protocol == 'tcp' & completeness == 0 ~ 1,
@@ -105,10 +105,17 @@ packets <-
         )
     )
 ```
+
+```{r}
+# Time filter to remove long trail-off - may need to be removed?
+packets_stream_data <-
+    packets_stream_data |>
+    filter(timestamp < ymd_hms('2025-08-19 11:15:00', tz = 'Australia/Melbourne')) 
+```
     
 ```{r}
 connections_per_protocol <-
-    packets |> 
+    packets_stream_data |> 
     group_by(stream, protocol) |>
     filter(cumsum(complete_connection) > -2) |>
     ungroup() |> 
@@ -147,6 +154,10 @@ connections <-
     )
 ```
 
+```{r}
+rm(packets_raw)
+rm(packets_stream_data)
+```
     
     
 ```{r}
@@ -172,7 +183,7 @@ connections_per_protocol |>
 ```
     
     
-# First Model
+# Model 1.1 - Constant Means
 
 ```{stan eval=FALSE, include=FALSE}
 model {
@@ -196,18 +207,19 @@ m1.1_fit <- m1.1_constant_mean$sample(
         c0 = 0,
         .n_name = n_prefix('t')
     ),
+    seed = 23490,
     chains = 4,
     parallel_chains = 4
 )
 ```
 
 ```{r}
-m1.1_draws <-
+m1.1_pred <-
     m1.1_fit |>
     spread_draws(c_pred[i]) |>
     ungroup()
 
-m1.1_draws |>
+m1.1_pred |>
     filter(.draw %in% 1:300) |>
     ggplot() +
     geom_line(aes(i, c_pred, group = .draw), alpha = .3)
@@ -215,24 +227,25 @@ m1.1_draws |>
 
 ```{r}
 # Clean Up
-rm(m1.1_draws)
+rm(m1.1_pred)
 ```
 
+# Model 1.2 - Concurrency-Dependent Means
 
-
-```{stan}
+```{stan eval=FALSE, include=TRUE}
 model {
     mu_n ~ lognormal(0, 1.5);
     phi_n ~ exponential(1);
+
     prev_complete ~ beta(1,1);
 
-    new_cps[t] ~ neg_binomial_2(mu_n, phi_n);
-  
-    int c_prev = c0; 
-    for (i in 1:t) {
-        complete_cps[t] ~ binomial(c_prev, prev_complete);
-        
-        c_prev = c_prev + new_cps[t] - complete_cps[t];
+    new_cps ~ neg_binomial_2(mu_n, phi_n);
+     
+    int c_prev = new_cps[1]; 
+    for (i in 2:t) {
+        c_prev = c_prev + new_cps[i];
+        complete_cps[i] ~ binomial(c_prev, prev_complete);
+        c_prev = c_prev - complete_cps[i];
     }
 }
 ```
@@ -254,24 +267,35 @@ m1.2_fit <- m1.2_concurrency_dependent$sample(
 )
 ```
 ```{r}
-m1.2_fit |>
-    gather_draws(mu_n, phi_n, prev_complete) |>
-    ungroup() |>
-    ggplot() +
-    geom_histogram(aes(.value, colour = .chain), bins = 100) +
-    facet_wrap(vars(.variable), scales = 'free')
-```
-```{r}
 m1.2_draws <-
+    m1.2_fit |>
+    gather_draws(mu_n, phi_n, prev_complete) |>
+    ungroup()
+
+m1.2_pred <-
     m1.2_fit |>
     spread_draws(c_pred[i]) |>
     ungroup()
 ```
-
-
+  
+```{r}  
+m1.2_pred |>
+    filter(.draw %in% 1:6) |>
+    ggplot() +
+    geom_line(data = connections, aes(second, concurrent_connections, colour = 'Real')) +
+    geom_line(aes(i, c_pred, colour = 'Generated'), alpha = .9) +
+    facet_wrap(vars(.draw))
+```
 
 ```{r}
-m1.2_draws|>
+m1.2_draws |>
+    ggplot() +
+    geom_histogram(aes(.value, fill = as_factor(.chain)), bins = 128) +
+    facet_wrap(vars(.variable), scales = 'free_x')
+```
+
+```{r}
+m1.2_pred |>
     filter(.draw %in% sample(max(.draw), 9)) |>
     ggplot() +
     geom_histogram(data = connections, aes(concurrent_connections, fill = 'real'), binwidth = 1) +
@@ -283,20 +307,98 @@ m1.2_draws|>
 ```
 
 ```{r}
-rm(m1.1_draws)
+rm(m1.2_draws)
+rm(m1.2_pred)
 ```
 
 
-# Model 3
+# Model 1.3 - Concurrency and Protocol Aware Means
+
+```{r}
+model {
+    mu_n ~ lognormal(0, 1.5);
+    phi_n ~ exponential(1);
+    prev_complete ~ beta(1,1);
+
+    new_cps ~ neg_binomial_2(mu_n[ protocol ], phi_n[ protocol ]);
+    
+    array[n_p] int c_prev;
+    for (n in 1:n_p) c_prev[n] = c0; 
+    
+    for (i in 1:t) {
+        int p = protocol[i];
+        
+        c_prev[ p ] = c_prev[ p ] + new_cps[i];
+        complete_cps[i] ~ binomial(c_prev[ p ], prev_complete[ protocol[i] ]);
+        c_prev[ p ] = c_prev[ p ] - complete_cps[ i ];
+    }
+}
+```
+
+
+
+
 
 ```{r}
 m1.3_proto <- cmdstan_model('m1.3_protocol_concurrency.stan')
 
-m1.3_fit <- m2_arima$sample(
+m1.3_fit <- m1.3_proto$sample(
     data = compose_data(
-        connections_per_protocol |>
-            select(-timestamp) |>
-            rename(p_index = proto_index),
+        connections_per_protocol |> select(-timestamp), 
+        n_p = nlevels(connections_per_protocol$protocol),   
+        c0 = 0,
+        .n_name = n_prefix('t')
+    ),
+    chains = 4,
+    parallel_chains = 4
+)
+```
+```{r}
+m1.3_params_post <-
+    m1.3_fit |>
+    gather_draws(mu_n[i], phi_n[i])
+
+m1.3_params_post |>
+    ggplot() +
+    geom_histogram(aes(.value, fill = as_factor(i)), binwidth = .001) +
+    facet_grid(vars(.variable))
+
+m1.3_params_post |>
+    ggplot() +
+    geom_line(aes(.iteration, .value, colour = as_factor(.chain)), alpha = .5) +
+    facet_wrap(vars(.variable, i))
+    
+#m1.3_fit |>
+#    ungroup() |>  
+#    ggplot() +
+#    geom_histogram(aes(.value, fill = as_factor(.chain)), binwidth = .01) +
+#    facet_wrap(vars(i))
+```
+```{r}
+m1.3_pred <-
+    m1.3_fit |>
+    spread_draws(c_pred[p, t]) |>
+    ungroup() 
+```
+```{r}
+m1.3_pred |>
+    filter(.draw == 1) |> 
+    ggplot() +
+    #geom_line(data = connections, aes(second, concurrent_connections, colour = 'Real')) +
+    geom_line(aes(t, c_pred)
+```
+
+
+# Model 2 - Protocol AR(1)
+
+
+```{r}
+m2_ar <- cmdstan_model('m2_ar.stan')
+
+m2_fit <- m2_ar$sample(
+    data = compose_data(
+        connections_per_protocol |> select(-timestamp), 
+        n_p = nlevels(connections_per_protocol$protocol),   
         c0 = 0,
         .n_name = n_prefix('t')
     ),
@@ -305,3 +407,8 @@ m1.3_fit <- m2_arima$sample(
 )
 ```
 
+```{r}
+m1.2_draws <
+    m1.2_fit |>
+    gather_draws(mu_n, phi_n, prev_complete) |>
+    ungroup()

@@ -1,0 +1,20 @@
+services:
+  r-stan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tcp-modelling:latest
+    volumes:
+      # Data: read-only so Claude can't clobber source data
+      - ./data:/data:ro
+      # Work dir: Claude writes R scripts and reads outputs here
+      - ./work:/work
+    environment:
+      - CMDSTAN=/opt/cmdstan
+    # Resource limits — adjust to taste
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+    # Network access required for Claude to reach the Anthropic API
