@@ -64,6 +64,9 @@ run_claude() {
     -c 'claude --dangerously-skip-permissions --model claude-opus-4-7 --effort max -p "${CLAUDE_PROMPT}" --output-format json < /dev/null | tee "${CLAUDE_LOG}"'
 }
 
+# Checkout a branch based on the date
+git checkout -b "model_$(date +%Y%m%d-%H%M%S)"
+
 # ── Phase 1: Bootstrap ──────────────────────────────────────────────────────
 
 if [ ! -f "work/models/m1.stan" ]; then
