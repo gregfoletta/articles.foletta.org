@@ -61,7 +61,7 @@ run_claude() {
     -e CLAUDE_PROMPT="$(cat "$prompt_file")" \
     -e CLAUDE_LOG="/work/loop_logs/$(basename "$log_file")" \
     r-stan \
-    -c 'claude --dangerously-skip-permissions --model claude-opus-4-7 -p "${CLAUDE_PROMPT}" --output-format json < /dev/null | tee "${CLAUDE_LOG}"'
+    -c 'claude --dangerously-skip-permissions --model claude-opus-4-7 --effort xhigh -p "${CLAUDE_PROMPT}" --output-format json < /dev/null | tee "${CLAUDE_LOG}"'
 }
 
 # ── Phase 1: Bootstrap ──────────────────────────────────────────────────────
