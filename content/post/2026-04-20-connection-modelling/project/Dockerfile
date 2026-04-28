@@ -46,7 +46,8 @@ RUN echo "cmdstanr::set_cmdstan_path('$(ls -d /opt/cmdstan-*)')" \
     >> /usr/local/lib/R/etc/Rprofile.site
 
 # Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code@2.1.121
+#RUN npm install -g @anthropic-ai/claude-code
 
 # Non-root user for safer execution
 RUN useradd -m -u 1001 analyst
