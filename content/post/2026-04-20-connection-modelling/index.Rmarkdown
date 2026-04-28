@@ -9,6 +9,9 @@ tags: []
 
 ```{r include=FALSE}
 library(tidyverse)
+library(tidybayes)
+library(cmdstanr)
+library(posterior)
 ```
     
 I've worked in the network and security industry for almost two decades, and in that time I've spent a significant portion sizing and deploying routers and firewalls for customers. A router is relatively simple to size: what's their aggregate bandwidth they have or are forceasting they will have. With a firewall bandwidth also needs to be taken into account, but as they are stateful devices you also need to look at connections per second, and concurrent connections. This has flow on effects as well, for example the firewalls will often log their connections, and so your log storage rates and volumes will be based on the aggregate these connections across all the customer's locations.
@@ -22,8 +25,85 @@ I've tried to keep this post as short as possible while still communicating the 
 
 # The Data and Caveats
 
+This first thing to acknowledge is there's a huge gamut of traffic profiles out there, from webservers handling huge amounts of incoming requests, to a grandparent reading a news site. The data I've gathered you could call "standard corporate" traffic. Roughly speaking it consists of Teams and Outlook running in the background and interacted with sporadically in the foreground, coupled with a reasonably high amount of browsing traffic. 
+
+I gathered two samples from my own machine on different days, and samples from two of my colleages. These were gathered using the following *tshark* command:
+
+```bash
+tshark -i eth0 -T ek -a duration:3600 -e ip.version -e ip.src -e ip.dst -e ipv6.src -e ipv6.dst -e tcp.srcport -e tcp.dstport -e tcp.stream -e tcp.time_relative -e tcp.completeness -e udp.srcport -e udp.dstport -e udp.stream -e udp.time_relative
+```
+
+This gives us a line of JSON per TCP segment or UDP datagram:
+
+```json
+{"timestamp":"1776889635570","layers":{"ip_version":["6"],"ipv6_src":["2606:b740:49::112"],"ipv6_dst":["2403:5803:98a3:1:700f:57a0:ec2:c0cd"],"tcp_srcport":["80"],"tcp_dstport":["53090"],"tcp_stream":["4"],"tcp_time_relative":["0.000000000"],"tcp_completeness":["0"]}}
+```
+
+From this we're able, on a per-second basis, to determine how many TCP and UDP connections have been either created or terminated. With TCP we can use the [conversation completeness](https://www.wireshark.org/docs/wsug_html_chunked/ChAdvTCPAnalysis.html#_tcp_conversation_completeness) derived variable to determine the state of connections, but with UDP we'll have to simply use the first and last datagram in each distinct 5-tuple.
+
 
 # My Attempts
+
+```{r include=FALSE}
+library(here)
+
+collate_cps <- function(file) { 
+    # Monkey patch
+    list.files <- function(...) return (file)
+    saveRDS <- function(data, file) { print("Not saving file in workspace") }
+    source('project/work/scripts/explore.R', local = TRUE)
+    # cps_out is in the file
+    return(cps_out)
+}
+
+training_cps <- collate_cps('project/data/mb_cap.Rds')
+training_data <- read_rds('project/data/mb_cap.Rds')
+
+```
+
+```{r}
+# Look at how the training concurrents work out
+training_cps |>
+    mutate(
+        tcp_net_connections = tcp_new - tcp_end,
+        tcp_concurrent = cumsum(tcp_net_connections),
+        udp_net_connections = udp_new - udp_end,
+        udp_concurrent = cumsum(udp_net_connections)
+    ) |>
+    ggplot() +
+    geom_line(aes(second, udp_concurrent))
+
+```
+
+```{r}
+m1.1_constant_mean <- cmdstan_model('m1.1_constant_means.stan')
+
+m1.1_fit <- m1.1_constant_mean$sample(
+    data = compose_data(
+        training_cps,
+        c0 = 0,
+        .n_name = n_prefix('t')
+    ),
+    seed = 23490,
+    chains = 4,
+    parallel_chains = 4
+)
+```
+```{r}
+# Concurrent connections
+m1.1_fit$draws(variables = c('tcp_new_rep', 'tcp_end_rep')) |> 
+    subset_draws(iteration = 1:4) |> 
+    spread_draws(tcp_new_rep[t], tcp_end_rep[t]) |>
+    group_by(.draw) |>
+    mutate(
+        net_connections = tcp_new_rep - tcp_end_rep,
+        concurrent_connections = cumsum(net_connections)
+    ) |>
+    ggplot() +
+    geom_line(aes(t, concurrent_connections, colour = as.factor(.draw)), alpha = 1)
+```
+
+
 
 # The Iteratve LLM Environment
 

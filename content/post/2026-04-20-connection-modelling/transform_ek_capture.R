@@ -6,26 +6,35 @@
 
 library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(jsonlite, quietly = TRUE, warn.conflicts = FALSE)
+library(archive, quietly = TRUE, warn.conflicts = FALSE)
 
 args <- commandArgs(trailingOnly = TRUE)
 
 print(args)
 
-read_and_clean_ek_packets <- function(jsonl, rds) {
-    stream_in(file(jsonl), simplifyVector = TRUE, flatten = FALSE) |>
+read_and_clean_ek_packets <- function(archive, rds) {
+    archive_read(archive) |>  
+    stream_in(simplifyVector = TRUE, flatten = FALSE) |>
         as_tibble() |>
         unnest(layers) |>
         unnest(everything()) |>
         mutate(
-            id = 1:n(),
+            packet_id = 1:n(),
             src_ip = coalesce(ip_src, ipv6_src),
             dst_ip = coalesce(ip_dst, ipv6_dst),
             src_port = coalesce(tcp_srcport, udp_srcport),
             dst_port = coalesce(tcp_dstport, udp_dstport),
+            time_relative = coalesce(tcp_time_relative, udp_time_relative),
         ) |>
-        select(-c(contains('_src'), contains('_dst'))) |>
-        pivot_longer(c(udp_stream, tcp_stream), names_to = 'protocol', values_drop_na = TRUE,names_transform = ~{ str_remove(.x, "_stream") }) |>
-        select(id, timestamp, protocol, ip_version, src_ip, dst_ip, src_port, dst_port, tcp_time_relative, tcp_completeness) |>
+        select(-c(contains('_src'), contains('_dst'), 'tcp_time_relative', 'udp_time_relative')) |>
+        pivot_longer(c(udp_stream, tcp_stream), names_to = 'protocol', values_to = 'stream_id', values_drop_na = TRUE, names_transform = ~{ str_remove(.x, "_stream") }) |> 
+	mutate(
+	    timestamp = as.double(timestamp),
+	    ip_version = as.integer(ip_version),
+	    time_relative = as.double(time_relative),
+	    protocol = as.factor(protocol),
+	    stream_id = as.integer(stream_id)
+	) |>
         write_rds(rds, compress = 'gz')
 }
 

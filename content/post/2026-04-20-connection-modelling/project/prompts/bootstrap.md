@@ -79,20 +79,14 @@ zero-inflation, temporal structure, etc.]
 
 Write `/work/models/m1.stan`. Requirements:
 
-- Model TCP CPS and UDP CPS as independent Negative Binomial outcomes
-  (`neg_binomial_2`), one set of parameters per protocol. Start with a fully
-  pooled model (shared mu and phi across machines) as a baseline — the
-  multi-machine structure can be exploited in later iterations.
+- Determine an initial model based on your understanding of what may be appropriate. Start simple: further iterations will allow you to improve the model.
 - The Stan data block must include `K` (number of machines) and
   `array[T] int machine` (integer index 1..K for each second) so that
   later iterations can add machine-level parameters without changing the
   data pipeline.
-- Parameters: `mu_tcp`, `mu_udp` (mean rates), `phi_tcp`, `phi_udp`
-  (overdispersion)
-- Priors: weakly informative, set relative to the observed means from
-  exploration. Include a comment on each prior explaining the rationale.
+- Priors: likely use weak informative priors. Include a comment on each prior explaining the rationale.
 - Generated quantities block: simulate posterior predictive draws
-  `tcp_new_rep[t]` and `udp_new_rep[t]` for all T seconds
+  `tcp_new_rep[t]`, `tcp_end_rep[t]`, `udp_new_rep[t]` and `udp_end_rep[t]` for all T seconds
 
 Begin the file with a comment block:
 ```stan

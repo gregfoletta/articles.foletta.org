@@ -43,18 +43,22 @@ duration, and potentially its own connection rate.
 
 | Column             | Type      | Notes |
 |--------------------|-----------|-------|
-| `id`               | integer   | Row ID |
-| `timestamp`        | character | Milliseconds since Unix epoch; divide by 1000 for POSIXct |
-| `protocol`         | character | `"tcp"` or `"udp"` |
-| `ip_version`       | character | `"4"` or `"6"` |
+| `id`               | integer   | Per-pack ID |
+| `timestamp`        | double    | Milliseconds since Unix epoch; divide by 1000 for POSIXct |
+| `protocol`         | factor    | `"tcp"` or `"udp"` |
+| `ip_version`       | integer   | `"4"` or `"6"` |
 | `src_ip`           | character | Source IP address |
 | `dst_ip`           | character | Destination IP address |
-| `src_port`         | character | Source port |
-| `dst_port`         | character | Destination port |
-| `tcp_time_relative`| character | Seconds since stream start (TCP only; NA for UDP) |
+| `src_port`         | character | Source TCP or UDP port |
+| `dst_port`         | character | Destination TCP or UDP port |
+| `time_relative`    | double    | Seconds since the TCP or UDP stream started
 | `tcp_completeness` | character | TCP completeness bitmask (TCP only; NA for UDP) |
 
 **Key tcp_completeness values** (after casting to integer):
+- The values are cumulative within the stream, e.g.
+ - 0 is the first packet (SYN),
+ - 1 is the second packet (SYN/ACK)
+ - 3 is the ACK from the SYN/ACK
 - `0`  — first packet of a new TCP connection (this IS the new-connection event)
 - `15`, `31`, `63` — completed connections
 - Other values — mid-stream packets, ignore for CPS counting
@@ -87,22 +91,24 @@ address families so that no outbound traffic is missed.
 ## Defining Events per Protocol
 
 ### New connections
-**TCP**: `tcp_completeness == 0` AND `src_ip == local_ip`
+**TCP**: `tcp_completeness == 0` AND `src_ip == local_ip`. 
+Note you can use the `stream_id` variable to uniquely identify a bi-directional TCP stream. `stream_id` is only unique WITHIN protocol (tcp or udp).
 
-**UDP**: No completeness field. Treat each unique
-`(src_ip, dst_ip, src_port, dst_port)` 4-tuple as one flow. The *first*
-packet of each 4-tuple (by timestamp) is the new-connection event.
+Only count successful TCP connections as a new-connection event. TCP connections that never reached a full TCP three-way should not be counted.
+
+**UDP**: No completeness field. 
+Can use the `stream_id` variable to uniquely identify a UDP stream. The *first* packet of each stream is a new-connection event.
 Filter to `src_ip == local_ip` for outbound flows only.
 
 ### Terminations
-**TCP**: For each unique stream (identified by the 4-tuple), the termination
+**TCP**: For each unique stream (identified by `stream_id`), the termination
 event is the packet where `tcp_completeness` reaches a terminal value
 (15, 31, or 63 — indicating FIN/RST completion). Use the timestamp of that
 packet as the termination time. Only count streams that reach a terminal
 completeness value; incomplete streams are in progress at capture end.
 
 **UDP**: No explicit termination signal exists. Use the *last* packet of each
-4-tuple (by timestamp) as the termination event. This is an approximation —
+stream (identified by `stream_id`) as the termination event. This is an approximation —
 it underestimates true termination rate because some flows may continue beyond
 the capture window.
 
@@ -125,37 +131,9 @@ column retained throughout. The CPS data saved to disk should have columns:
 - `second`     — integer, 1-indexed within each machine's capture
 - `minute`     — integer minute block index within each machine's capture
 - `tcp_new`, `udp_new`, `tcp_end`, `udp_end` — integer counts
+- `tcp_concurrent` and `udp_concurrent` - calculated per-protocol, per-second, per-machine based on `tcp_new` - `tcp_end` and `udp_new` - `udp_end`.
 
-Many seconds will have zero counts in each series — expected and handled
-naturally by Negative Binomial or Poisson likelihoods.
-
----
-
-## Scaling to N Users
-
-With multiple machine captures, the data can inform both **within-machine**
-variation (minute-to-minute rate changes for one user) and **between-machine**
-variation (one user's baseline rate vs another's). A hierarchical model can
-estimate both.
-
-Scaling assumptions:
-- N users each behave independently, drawn from the same population distribution.
-- Each user has their own latent rate, which varies minute-to-minute.
-- Aggregate counts for N users = sum of N independent draws per second.
-
-For Negative Binomial with parameters `(mu, phi)`:
-- Per-user mean = `mu`
-- N-user aggregate mean = `N * mu`
-- N-user aggregate variance = `N * (mu + mu^2 / phi)`
-
-To generate aggregate distributions, simulate N independent draws per second
-from the posterior predictive and sum them, across many posterior samples.
-Do this separately for new connections, terminations, and concurrent connections.
-
-**Key firewall sizing outputs for N users**:
-- New connections/s → firewall session creation throughput
-- Terminations/s × 60 → firewall log lines/minute
-- Concurrent connections → firewall session table size required
+Many seconds will have zero counts in each series, which is expected.
 
 ---
 
@@ -172,7 +150,7 @@ Do this separately for new connections, terminations, and concurrent connections
   loop_logs/          <- JSON logs (written by host runner)
 ```
 
-Data is at `/data/data.rds` (read-only mount).
+Multiple data files from multiple machines are in `/data/*.jsonl.rds` (read-only mount).
 
 ---
 
@@ -199,12 +177,8 @@ observed CPS distribution — capturing the mean, spread, and tail behaviour.
 Zero-inflation or heavy tails in the observed data that the model misses are
 red flags.
 
-## Final Deliverable
+You may also look at the dervied concurrent connections from the posterior (new connections minus ended connections) per protocol (UDP and TCP)
+over time and compare them against the real (derived) concurrent connections:
+- Are the real connections within the credible interval?
+- Do the concurrent connections drop into negative territory (which is impossible in the real world).
 
-For N = 1, 10, 50, 100 users, plots showing the posterior predictive
-distribution of:
-1. New connections per second (firewall throughput sizing)
-2. Terminations per second × 60 (firewall log volume per minute)
-3. Concurrent connections (firewall session table sizing)
-
-These three plots together are the primary firewall-sizing artefact.

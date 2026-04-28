@@ -54,33 +54,13 @@ Assess the last model against these criteria:
 
 Also consider: does the PPC from the previous iteration (in `/work/plots/`)
 show systematic misfit (too narrow, heavy-tailed data not captured, wrong
-mean)?
+mean)? Does the dervived concurrent sessions per second per protocol appear "similar" to the training data?
 
 ---
 
-## Step 3: Make exactly ONE targeted improvement
+## Step 3: Make Improvements
 
-Choose one change based on your diagnosis. In priority order:
-
-1. **Divergences present**: non-centered parameterization, constrain priors
-2. **Low ESS / high Rhat**: log-scale parameterization, more informative priors
-3. **PPC too narrow** (model underestimates spread): more flexible likelihood,
-   add overdispersion structure, or relax priors
-4. **PPC systematically shifted**: adjust prior on mean, check data prep
-5. **PPC shape wrong** (e.g. bimodal observed, unimodal predicted): before
-   attempting mixture models, check whether temporal autocorrelation better
-   explains the shape misfit — mixtures on count data are frequently
-   non-identifiable; temporal structure (AR or hierarchical by time block)
-   is usually more robust and often the true cause of apparent bimodality
-6. **Model does not yet include terminations**: extend the model to jointly
-   model connection terminations (`tcp_end`, `udp_end`) alongside new
-   connections. Terminations drive firewall log volume (logs/min ≈
-   terminations/s × 60 × N users) and, together with new connections, allow
-   concurrent connections to be derived as a generated quantity. See
-   CONTEXT.md for how to compute `tcp_end` and `udp_end` from the data.
-7. **All diagnostics good, PPC good, terminations modelled**: add temporal
-   structure (e.g. AR(1) on log rate), or model TCP/UDP jointly with shared
-   hyperpriors
+Make a change to the model based on your analysis of the metrics of the model. Can be a significant change (i.e. completely different model) if required. 
 
 If your change introduces a meaningfully different model structure, write it
 as a **new file** (`m2.stan`, `m3.stan`, etc.) rather than overwriting the
