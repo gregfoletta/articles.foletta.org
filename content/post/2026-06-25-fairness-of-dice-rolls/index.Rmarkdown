@@ -1,0 +1,39 @@
+---
+title: Fairness of Dice Rolls
+author: Greg Foletta
+date: '2026-06-25'
+slug: []
+categories: []
+tags: []
+build:
+  render: never
+  list: never
+  publishResources: false
+---
+
+
+
+
+```{r}
+library(tidyverse)
+library(gganimate)
+```
+
+```{r}
+dice_rolls <-
+    read_file('dice_rolls.txt') |>
+    str_split(pattern = '', simplify = FALSE) |>
+    pluck(1) |>
+    as.integer() |>
+    as_tibble() |>
+    mutate(roll_id = 1:n()) |>
+    # Remove the newline (last value) which converted to NA
+    slice_head(n = -1)
+```
+
+```{r}
+dice_rolls |>
+    ggplot() +
+    geom_histogram(aes(value), binwidth = 1)
+```
+
