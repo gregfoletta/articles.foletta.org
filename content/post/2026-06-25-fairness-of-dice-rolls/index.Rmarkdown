@@ -1,39 +1,117 @@
 ---
-title: Fairness of Dice Rolls
+title: Rolling a Die and the Clustering Illusion 
 author: Greg Foletta
-date: '2026-06-25'
+date: '2026-07-19'
 slug: []
 categories: []
 tags: []
-build:
-  render: never
-  list: never
-  publishResources: false
 ---
 
+One of the first posts I wrote on this blog was about simulating 'Snakes and Ladders'. Simple games of chance like this are great to think about and 
+
+The question that I asked myself while playing a game with my son is "could this I detect if this dice was biased?". To answer this quesion, I needed data.
 
 
 
-```{r}
+```{r include=FALSE}
 library(tidyverse)
 library(gganimate)
+library(cmdstanr)
+library(tidybayes)
+library(gt)
 ```
 
-```{r}
+# Yes I Rolled It 1000 Times
+
+Funnily enough, rolling a die one-thousand times didn't take as long as I previously thought, only about 35 minutes. For what it's worth, I swapped back and forth between my left and right hands to reduce the predictability my my rolls, and put a decent amount of momentum into each roll. It was actually quite meditiative. After those thirty five minutes I had my data. 
+```{r include=FALSE}
 dice_rolls <-
     read_file('dice_rolls.txt') |>
     str_split(pattern = '', simplify = FALSE) |>
     pluck(1) |>
     as.integer() |>
     as_tibble() |>
+    rename(roll = value) |> 
     mutate(roll_id = 1:n()) |>
     # Remove the newline (last value) which converted to NA
     slice_head(n = -1)
 ```
 
-```{r}
+```{r echo=FALSE}
 dice_rolls |>
     ggplot() +
-    geom_histogram(aes(value), binwidth = 1)
+    geom_histogram(aes(roll), stat = 'count', binwidth = 1, fill = 'lightgreen') +
+    labs(
+        title = "Distrbution of Results: 1,000 Die Rolls",
+        x = "Die Face",
+        y = "Count of Rolls"
+    ) +
+    scale_x_discrete()
+```
+After all that, face 6 does peek its head 
+```{r}
+dice_roll_mdl <- cmdstan_model('dice_rolls.stan')
+```
+
+```{r}
+dice_roll_fit <- dice_roll_mdl$sample(
+    data = compose_data(
+        dice_rolls,
+        alpha = 1
+    )
+)
+```
+```{r}
+dice_roll_draws <-
+dice_roll_fit |>
+    spread_draws(theta[face])
+
+dice_roll_draws |> 
+    ggplot() +
+    stat_dotsinterval(aes(x = theta, y = as_factor(face))) +
+    geom_vline(aes(xintercept = 1/6))
+```
+```{r}
+dice_roll_draws |>
+    median_qi()
+```
+
+```{r}
+dice_roll_draws |> 
+    median_qi(theta) |>
+    select(face, theta, .lower, .upper) |>
+    gt()
+```
+
+```{r}
+dice_roll_draws |>
+    filter(face == 6) |> 
+    summarise(
+        percent_side = mean(theta > 1/6) 
+    )
+```
+```{r}
+alpha <- 1
+n <- 1000
+side6_obs <- 0.9477
+
+mass_above <- function(count) { 1 - pbeta(1/6, alpha + count, 5 * alpha + n - count) }
+
+rmultinom(10000, n, rep(1/6, 6)) |>
+    as_tibble() |>
+    mutate(face = 1:n()) |>
+    pivot_longer(cols = starts_with('V'), names_to = 'sim', names_prefix = 'V', values_to = 'count') |>
+    mutate(q = mass_above(count)) |>
+    group_by(sim) |> 
+    summarise(
+        q_fixed = q[face == '3'],
+        q_max = max(q)
+    ) |>
+    summarise(
+        p_fixed = mean(q_fixed >= side6_obs),
+        p_any = mean(q_max >= side6_obs)
+    ) |>
+    gt() |>
+    fmt_percent()
 ```
 
