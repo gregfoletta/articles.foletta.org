@@ -6,10 +6,10 @@ command = "hugo --gc --minify"
 TZ = 'Australia/Melbourne'
 
 [context.production.environment]
-HUGO_VERSION = "0.69.2"
+HUGO_VERSION = "0.164.0"
 
 [context.branch-deploy.environment]
-HUGO_VERSION = "0.69.2"
+HUGO_VERSION = "0.164.0"
 
 # Fix the CORS issue between articles.foletta.org and blog.foletta.net
 [[headers]]

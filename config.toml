@@ -11,11 +11,14 @@ summaryLength = 30
 enableEmoji = true
 pygmentsCodeFences = true
 
-#disqusShortname = "myShortName"
-googleAnalytics = "G-KDKENVQGM8"
+#[services.disqus]
+#    shortname = "myShortName"
+
+[services.googleAnalytics]
+    id = "G-KDKENVQGM8"
 
 # Note: to disable a social network icon delete or comment out the corresponding line
-[author]
+[params.author]
     name = "Greg Foletta"
     github = "gregfoletta"
     #gitlab = "username"
