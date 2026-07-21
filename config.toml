@@ -1,6 +1,6 @@
-baseurl = "https://blog.foletta.net"
+baseurl = "https://diceroll.blog.foletta.net"
 title = "Greg Foletta - Bits and Blobs"
-copyright = "Copyright 2025 - Greg Foletta"
+copyright = "Copyright 2026 - Greg Foletta"
 canonifyurls = true
 theme = "hugo-kiera"
 
