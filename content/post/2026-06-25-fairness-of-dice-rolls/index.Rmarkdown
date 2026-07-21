@@ -11,7 +11,7 @@ One of the first posts I wrote on this blog was about simulating 'Snakes and Lad
 
 The question that I asked myself while playing a game with my son is "could this I detect if this dice was biased?". To answer this quesion, I needed data.
 
-
+# LLM Disclosure
 
 ```{r include=FALSE}
 library(tidyverse)
@@ -23,7 +23,7 @@ library(gt)
 
 # Yes I Rolled It 1000 Times
 
-Funnily enough, rolling a die one-thousand times didn't take as long as I previously thought, only about 35 minutes. For what it's worth, I swapped back and forth between my left and right hands to reduce the predictability my my rolls, and put a decent amount of momentum into each roll. It was actually quite meditiative. After those thirty five minutes I had my data. 
+Rolling a die one-thousand times didn't take as long as I previously thought, only about 35 minutes. For what it's worth, I swapped back and forth between my left and right hands to reduce the predictability my my rolls, and put a decent amount of momentum into each roll. It was actually quite meditiative. After those thirty five minutes I had my data, and here are the results of the counts: 
 ```{r include=FALSE}
 dice_rolls <-
     read_file('dice_rolls.txt') |>
@@ -40,76 +40,130 @@ dice_rolls <-
 ```{r echo=FALSE}
 dice_rolls |>
     ggplot() +
-    geom_histogram(aes(roll), stat = 'count', binwidth = 1, fill = 'lightgreen') +
+    geom_bar(aes(roll), fill = 'lightgreen') +
     labs(
         title = "Distrbution of Results: 1,000 Die Rolls",
         x = "Die Face",
         y = "Count of Rolls"
     ) +
-    scale_x_discrete()
+    scale_x_continuous(breaks = 1:6)
 ```
-After all that, face 6 does peek its head 
-```{r}
-dice_roll_mdl <- cmdstan_model('dice_rolls.stan')
+After one-thousand rolls, face 6 peeks its head out above the crowd. Is this evidence of a loaded die? Or is this within the realms of natural variability?
+
+# A Trip to Monte Carlo
+
+Here's our Stan model for our die rolls. Astute readers will notice that the dirchlet/categorical are conjugates and thus there's an analytical solution, negating the need for a Monte Carlo simulation. But I need Stan practice, so we'll continue on.
+
+```stan
+data {
+  int<lower=1> n;
+  array[n] int<lower=1, upper=6> roll;
+}
+
+parameters {
+  simplex[6] theta;
+}
+
+model {
+  theta ~ dirichlet( rep_vector(1, 6) );
+  roll  ~ categorical(theta); 
+}
 ```
 
-```{r}
+The Stan program takes the die roll data as an array of **rolls** of length **n**. These rolls are drawn from a **categorical** distribution with with a simplex (a non-negative vector that sums to 1) parameter **theta**. The posterior distribution of **theta** we get by running our Stan sampler is the probability distribution over the six die face probabilities. This represents our uncertainty about the probability given our rolls data.
+
+We're using a **dirichlet** prior on theta, with all of the *alpha* values equal to one. What that says is that we expect that all combinations of probabilities have an equal probability density. Each face could have a probability of 1/6, but there's an equal amount of probability density at 5/6, while the remaining faces have a probability of 1/30. I have the die in my hand and can see and feel that it looks pretty unbiased, so this prior is not a good choice. But let's roll with it (hah!) for the moment.
+
+
+```{r include=FALSE}
+# Compile model
+dice_roll_mdl <- cmdstan_model('dice_rolls.stan')
+
+
 dice_roll_fit <- dice_roll_mdl$sample(
-    data = compose_data(
-        dice_rolls,
-        alpha = 1
-    )
+    data = compose_data( dice_rolls ),
 )
 ```
+
+Let's take a look at some of the summary statistics of the theta posteriors:
+
+```{r}
+dice_roll_fit$summary(
+    'median', 'sd',
+    variables = 'theta'
+)
+```
+
+The median of the posterior distribution of faces 1 thru 5 all sit close to 1/6 (.166), but we see **theta[6]** is deviated. How much of the posterior distribution is above 1/6?
+
 ```{r}
 dice_roll_draws <-
 dice_roll_fit |>
     spread_draws(theta[face])
 
-dice_roll_draws |> 
-    ggplot() +
-    stat_dotsinterval(aes(x = theta, y = as_factor(face))) +
-    geom_vline(aes(xintercept = 1/6))
-```
-```{r}
-dice_roll_draws |>
-    median_qi()
-```
-
-```{r}
-dice_roll_draws |> 
-    median_qi(theta) |>
-    select(face, theta, .lower, .upper) |>
-    gt()
-```
-
-```{r}
-dice_roll_draws |>
+side6_mass_percent <-
+    dice_roll_draws |>
     filter(face == 6) |> 
     summarise(
         percent_side = mean(theta > 1/6) 
     )
+
 ```
+
+```{r}
+print(side6_mass_percent)
+```
+
+Around 95.5% of it. Rather than single statistics, let's look a a visualisation of the theta distriubions of each face:
+```{r echo=FALSE}
+dice_roll_draws |> 
+    ggplot() +
+    stat_dotsinterval(aes(x = theta, y = as_factor(face)), .width = .90) +
+    geom_vline(aes(xintercept = 1/6)) +
+    annotate(x = 1/6, y = .6, label = '1/6', geom = 'label') +
+    labs(
+        title = 'Die Rolls Posterior Distribution',
+        subtitle = '90% Credible Interval',
+        x = 'Theta',
+        y = 'Die Face'
+    )
+```
+All of the other faces are well inside our 90% credible interval, but face 6 sits outside of it. Surely this means that there's only a 1:20 chance of this occurring, and we can say with reasonable confidence that this dice is biased towards 6?
+
+# Enter the Texan Sharpshooter
+
+This is why I - a statistical dabbler - am very nervous asserting anything about probability in public. Around every corner seems to be a wrong assumption or human foible that catches me out. In this instance, I've been shot by a [Texan Sharpshooter](https://en.wikipedia.org/wiki/Texas_sharpshooter_fallacy): in the same way they draw the bullseye *after* the shot, I picked face six *after* I saw the data.
+
+If I had said "I think the six is biased", then then I had seen these posterior distributions, the roughly 1 in 20 chance of seeing a posterior this large is correct. But I chose 
+
+How can we get a better intuition of this? We can simulate. I'm not going keep rolling a die, but instead move to a computational simulation. In the below code, we simulate 1,000 dice rolls 100,000 thousand times. We calculate the marginal posterior for each roll, and then  
+
 ```{r}
 alpha <- 1
-n <- 1000
-side6_obs <- 0.9477
+simulations <- 100000
+rolls <- 1000
 
-mass_above <- function(count) { 1 - pbeta(1/6, alpha + count, 5 * alpha + n - count) }
+mass_above <- function(count) { 
+    1 - pbeta(1/6, alpha + count, 5 * alpha + n - count)
+}
 
-rmultinom(10000, n, rep(1/6, 6)) |>
+rmultinom(simulations, rolls, rep(1/6, 6)) |>
     as_tibble() |>
     mutate(face = 1:n()) |>
     pivot_longer(cols = starts_with('V'), names_to = 'sim', names_prefix = 'V', values_to = 'count') |>
-    mutate(q = mass_above(count)) |>
+    mutate(
+        mass_above = mass_above(count)
+    ) |>
     group_by(sim) |> 
     summarise(
-        q_fixed = q[face == '3'],
-        q_max = max(q)
-    ) |>
+        # Picking a face beforehand
+        q_fixed = mass_above[face == 3L],
+        # Picking the largest face
+        q_max = max(mass_above)
+    ) |> 
     summarise(
-        p_fixed = mean(q_fixed >= side6_obs),
-        p_any = mean(q_max >= side6_obs)
+        `Pre-Chosen Face` = mean(q_fixed >= side6_mass_percent$percent_side),
+        `Highest Face` = mean(q_max >= side6_mass_percent$percent_side)
     ) |>
     gt() |>
     fmt_percent()
