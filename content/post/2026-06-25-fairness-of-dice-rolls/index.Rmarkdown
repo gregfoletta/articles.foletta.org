@@ -152,10 +152,10 @@ simulations <- 100000
 rolls <- 1000
 
 dice_roll_sims <-
-rmultinom(simulations, rolls, rep(1/6, 6)) |>
-    as_tibble
+    rmultinom(simulations, rolls, rep(1/6, 6)) |>
+    as_tibble(.name_repair = 'unique_quiet') |> 
     mutate(face = 1:n()) |>
-    pivot_longer(cols = starts_with('V'), names_to = 'sim', names_prefix = 'V', values_to = 'count')
+    pivot_longer(cols = starts_with('..'), names_to = 'sim', names_pattern = '..(\\d+)', values_to = 'count') 
 ```
 
 For each simulation, we get the count of how many times each face was rolled out of the 1,000 rolls. Here's simulation 1 out of the 100,000:
@@ -167,15 +167,15 @@ dice_roll_sims |> select(sim, face, count) |> filter(sim == 1) |>  gt()
 We're not going to run Hamiltonian Monte Carlo across each of these simulations, but rather used the fact our Dirichlet/Categorical prior/likelihood is a conjugate, resulting in a Dirichlet posterior. The marginal probability for a single face collapses down into Beta distribution.
 
 ```{r}
-mass_above <- function(count, alpha = 1) { 
+mass_above <- function(count, alpha = 1, n) { 
     1 - pbeta(1/6, alpha + count, 5 * alpha + n - count)
 }
 
 dice_roll_sims |> 
-    mutate(
-        mass_above = mass_above(count)
-    ) |>
     group_by(sim) |> 
+    mutate(
+        mass_above = mass_above(count = count, alpha = 1, n = sum(count))
+    ) |>
     summarise(
         # Picking a face beforehand
         q_fixed = mass_above[face == 3L],
