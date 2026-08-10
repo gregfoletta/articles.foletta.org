@@ -18,8 +18,20 @@ figcaption {
   color: #767676;
 }
 
+/* Lift images slightly off the page */
+
+article img {
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.09);
+}
+
 @media (prefers-color-scheme: dark) {
   figcaption {
     color: #a3a3a3;
+  }
+
+  /* Shadows read as much weaker against the dark background */
+  article img {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 3px 10px rgba(0, 0, 0, 0.35);
   }
 }
