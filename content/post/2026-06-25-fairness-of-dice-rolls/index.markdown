@@ -20,7 +20,7 @@ A significant amount of LLM time was used asking questions, clarifying, and tryi
 # Rolling as Meditation
 
 <figure>
-<img src="die.jpg" alt="The Die in Question" />
+<img src="die.jpg" style="width:50.0%" alt="The Die in Question" />
 <figcaption aria-hidden="true">The Die in Question</figcaption>
 </figure>
 
@@ -40,20 +40,20 @@ die_rolls <-
     slice_head(n = -1)
 ```
 
-<div id="buqoaliryk" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#buqoaliryk table {
+<div id="boetvbydbw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#boetvbydbw table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#buqoaliryk thead, #buqoaliryk tbody, #buqoaliryk tfoot, #buqoaliryk tr, #buqoaliryk td, #buqoaliryk th {
+&#10;#boetvbydbw thead, #boetvbydbw tbody, #boetvbydbw tfoot, #boetvbydbw tr, #boetvbydbw td, #boetvbydbw th {
   border-style: none;
 }
-&#10;#buqoaliryk p {
+&#10;#boetvbydbw p {
   margin: 0;
   padding: 0;
 }
-&#10;#buqoaliryk .gt_table {
+&#10;#boetvbydbw .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -78,11 +78,11 @@ die_rolls <-
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_caption {
+&#10;#boetvbydbw .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#buqoaliryk .gt_title {
+&#10;#boetvbydbw .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -93,7 +93,7 @@ die_rolls <-
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#buqoaliryk .gt_subtitle {
+&#10;#boetvbydbw .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -104,7 +104,7 @@ die_rolls <-
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#buqoaliryk .gt_heading {
+&#10;#boetvbydbw .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -115,12 +115,12 @@ die_rolls <-
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_bottom_border {
+&#10;#boetvbydbw .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_col_headings {
+&#10;#boetvbydbw .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -134,7 +134,7 @@ die_rolls <-
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_col_heading {
+&#10;#boetvbydbw .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -153,7 +153,7 @@ die_rolls <-
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#buqoaliryk .gt_column_spanner_outer {
+&#10;#boetvbydbw .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -164,13 +164,13 @@ die_rolls <-
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#buqoaliryk .gt_column_spanner_outer:first-child {
+&#10;#boetvbydbw .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#buqoaliryk .gt_column_spanner_outer:last-child {
+&#10;#boetvbydbw .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#buqoaliryk .gt_column_spanner {
+&#10;#boetvbydbw .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -181,10 +181,10 @@ die_rolls <-
   display: inline-block;
   width: 100%;
 }
-&#10;#buqoaliryk .gt_spanner_row {
+&#10;#boetvbydbw .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#buqoaliryk .gt_group_heading {
+&#10;#boetvbydbw .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -209,7 +209,7 @@ die_rolls <-
   vertical-align: middle;
   text-align: left;
 }
-&#10;#buqoaliryk .gt_empty_group_heading {
+&#10;#boetvbydbw .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -223,13 +223,13 @@ die_rolls <-
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#buqoaliryk .gt_from_md > :first-child {
+&#10;#boetvbydbw .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#buqoaliryk .gt_from_md > :last-child {
+&#10;#boetvbydbw .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#buqoaliryk .gt_row {
+&#10;#boetvbydbw .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -247,7 +247,7 @@ die_rolls <-
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#buqoaliryk .gt_stub {
+&#10;#boetvbydbw .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -259,7 +259,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#buqoaliryk .gt_stub_row_group {
+&#10;#boetvbydbw .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -272,13 +272,13 @@ die_rolls <-
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#buqoaliryk .gt_row_group_first td {
+&#10;#boetvbydbw .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#buqoaliryk .gt_row_group_first th {
+&#10;#boetvbydbw .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#buqoaliryk .gt_summary_row {
+&#10;#boetvbydbw .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -287,14 +287,14 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#buqoaliryk .gt_first_summary_row {
+&#10;#boetvbydbw .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_first_summary_row.thick {
+&#10;#boetvbydbw .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#buqoaliryk .gt_last_summary_row {
+&#10;#boetvbydbw .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -303,7 +303,7 @@ die_rolls <-
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_grand_summary_row {
+&#10;#boetvbydbw .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -312,7 +312,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#buqoaliryk .gt_first_grand_summary_row {
+&#10;#boetvbydbw .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -321,7 +321,7 @@ die_rolls <-
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_last_grand_summary_row_top {
+&#10;#boetvbydbw .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -330,10 +330,10 @@ die_rolls <-
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_striped {
+&#10;#boetvbydbw .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#buqoaliryk .gt_table_body {
+&#10;#boetvbydbw .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -341,7 +341,7 @@ die_rolls <-
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_footnotes {
+&#10;#boetvbydbw .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -354,7 +354,7 @@ die_rolls <-
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_footnote {
+&#10;#boetvbydbw .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -362,7 +362,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#buqoaliryk .gt_sourcenotes {
+&#10;#boetvbydbw .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -375,64 +375,64 @@ die_rolls <-
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#buqoaliryk .gt_sourcenote {
+&#10;#boetvbydbw .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#buqoaliryk .gt_left {
+&#10;#boetvbydbw .gt_left {
   text-align: left;
 }
-&#10;#buqoaliryk .gt_center {
+&#10;#boetvbydbw .gt_center {
   text-align: center;
 }
-&#10;#buqoaliryk .gt_right {
+&#10;#boetvbydbw .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#buqoaliryk .gt_font_normal {
+&#10;#boetvbydbw .gt_font_normal {
   font-weight: normal;
 }
-&#10;#buqoaliryk .gt_font_bold {
+&#10;#boetvbydbw .gt_font_bold {
   font-weight: bold;
 }
-&#10;#buqoaliryk .gt_font_italic {
+&#10;#boetvbydbw .gt_font_italic {
   font-style: italic;
 }
-&#10;#buqoaliryk .gt_super {
+&#10;#boetvbydbw .gt_super {
   font-size: 65%;
 }
-&#10;#buqoaliryk .gt_footnote_marks {
+&#10;#boetvbydbw .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#buqoaliryk .gt_asterisk {
+&#10;#boetvbydbw .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#buqoaliryk .gt_indent_1 {
+&#10;#boetvbydbw .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#buqoaliryk .gt_indent_2 {
+&#10;#boetvbydbw .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#buqoaliryk .gt_indent_3 {
+&#10;#boetvbydbw .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#buqoaliryk .gt_indent_4 {
+&#10;#boetvbydbw .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#buqoaliryk .gt_indent_5 {
+&#10;#boetvbydbw .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#buqoaliryk .katex-display {
+&#10;#boetvbydbw .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#buqoaliryk div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#boetvbydbw div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -512,7 +512,7 @@ die_roll_draws |>
     ## # A tibble: 1 × 2
     ##    face `mean(theta > 1/6)`
     ##   <int>               <dbl>
-    ## 1     6               0.941
+    ## 1     6               0.944
 
 So 94.6% of the posterior mass of theta for face 6 sits above 1/6, the probability of a fair die we’d consider to be ‘fair’. Surely this is very firm evidence that theta (the face 6 marginal probabiltiy) is greater that 1/6, and thus the die is biased?
 
@@ -629,19 +629,8 @@ die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
     ## Chain 1 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
     ## Chain 1 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
     ## Chain 1 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 1 Iteration: 2000 / 2000 [100%]  (Sampling)
-
-    ## Chain 1 Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
-
-    ## Chain 1 Exception: normal_lpdf: Scale parameter is 0, but must be positive! (in '/tmp/RtmpKE7lNa/model-dd39227bb803.stan', line 14, column 2 to column 27)
-
-    ## Chain 1 If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
-
-    ## Chain 1 but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
-
-    ## Chain 1
-
-    ## Chain 1 finished in 0.1 seconds.
+    ## Chain 1 Iteration: 2000 / 2000 [100%]  (Sampling) 
+    ## Chain 1 finished in 0.2 seconds.
     ## Chain 2 Iteration:    1 / 2000 [  0%]  (Warmup) 
     ## Chain 2 Iteration:  100 / 2000 [  5%]  (Warmup) 
     ## Chain 2 Iteration:  200 / 2000 [ 10%]  (Warmup) 
@@ -664,7 +653,7 @@ die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
     ## Chain 2 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
     ## Chain 2 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
     ## Chain 2 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 2 finished in 0.1 seconds.
+    ## Chain 2 finished in 0.2 seconds.
     ## Chain 3 Iteration:    1 / 2000 [  0%]  (Warmup) 
     ## Chain 3 Iteration:  100 / 2000 [  5%]  (Warmup) 
     ## Chain 3 Iteration:  200 / 2000 [ 10%]  (Warmup) 
@@ -686,19 +675,8 @@ die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
     ## Chain 3 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
     ## Chain 3 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
     ## Chain 3 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 3 Iteration: 2000 / 2000 [100%]  (Sampling)
-
-    ## Chain 3 Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
-
-    ## Chain 3 Exception: normal_lpdf: Scale parameter is 0, but must be positive! (in '/tmp/RtmpKE7lNa/model-dd39227bb803.stan', line 14, column 2 to column 27)
-
-    ## Chain 3 If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
-
-    ## Chain 3 but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
-
-    ## Chain 3
-
-    ## Chain 3 finished in 0.1 seconds.
+    ## Chain 3 Iteration: 2000 / 2000 [100%]  (Sampling) 
+    ## Chain 3 finished in 0.2 seconds.
     ## Chain 4 Iteration:    1 / 2000 [  0%]  (Warmup) 
     ## Chain 4 Iteration:  100 / 2000 [  5%]  (Warmup) 
     ## Chain 4 Iteration:  200 / 2000 [ 10%]  (Warmup) 
@@ -721,13 +699,16 @@ die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
     ## Chain 4 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
     ## Chain 4 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
     ## Chain 4 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 4 finished in 0.1 seconds.
+    ## Chain 4 finished in 0.2 seconds.
     ## 
     ## All 4 chains finished successfully.
-    ## Mean chain execution time: 0.1 seconds.
-    ## Total execution time: 0.5 seconds.
+    ## Mean chain execution time: 0.2 seconds.
+    ## Total execution time: 1.1 seconds.
 
-    ## Warning: 5 of 4000 (0.0%) transitions ended with a divergence.
+    ## Warning: 7 of 4000 (0.0%) transitions ended with a divergence.
+    ## See https://mc-stan.org/misc/warnings for details.
+
+    ## Warning: 1 of 4 chains had an E-BFMI less than 0.3.
     ## See https://mc-stan.org/misc/warnings for details.
 
 ``` r

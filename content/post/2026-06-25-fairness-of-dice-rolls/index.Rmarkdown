@@ -41,7 +41,7 @@ options(
 
 # Rolling as Meditation
 
-![The Die in Question](die.jpg)
+![The Die in Question](die.jpg){width=50%}
 
 Rolling a die one-thousand times didn't take as long as I previously thought, only about 30 minutes. For what it's worth, I swapped back and forth between my left and right hands to reduce the predictability my my rolls, and put a decent amount of momentum into each roll. It was actually quite meditiative^[You can view the raw data [here](dice_rolls.txt)]. Here's the first 10 rolls, which I show primarily because of the ominous run of five fives. This had me concerned about my rolling technique, so I swapped my rolling hand regularly, and tried to impart as much momentum as possible.
 
