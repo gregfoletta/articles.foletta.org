@@ -40,20 +40,20 @@ die_rolls <-
     slice_head(n = -1)
 ```
 
-<div id="boetvbydbw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#boetvbydbw table {
+<div id="oodpbbngko" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#oodpbbngko table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#boetvbydbw thead, #boetvbydbw tbody, #boetvbydbw tfoot, #boetvbydbw tr, #boetvbydbw td, #boetvbydbw th {
+&#10;#oodpbbngko thead, #oodpbbngko tbody, #oodpbbngko tfoot, #oodpbbngko tr, #oodpbbngko td, #oodpbbngko th {
   border-style: none;
 }
-&#10;#boetvbydbw p {
+&#10;#oodpbbngko p {
   margin: 0;
   padding: 0;
 }
-&#10;#boetvbydbw .gt_table {
+&#10;#oodpbbngko .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -78,11 +78,11 @@ die_rolls <-
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_caption {
+&#10;#oodpbbngko .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#boetvbydbw .gt_title {
+&#10;#oodpbbngko .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -93,7 +93,7 @@ die_rolls <-
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#boetvbydbw .gt_subtitle {
+&#10;#oodpbbngko .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -104,7 +104,7 @@ die_rolls <-
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#boetvbydbw .gt_heading {
+&#10;#oodpbbngko .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -115,12 +115,12 @@ die_rolls <-
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_bottom_border {
+&#10;#oodpbbngko .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_col_headings {
+&#10;#oodpbbngko .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -134,7 +134,7 @@ die_rolls <-
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_col_heading {
+&#10;#oodpbbngko .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -153,7 +153,7 @@ die_rolls <-
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#boetvbydbw .gt_column_spanner_outer {
+&#10;#oodpbbngko .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -164,13 +164,13 @@ die_rolls <-
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#boetvbydbw .gt_column_spanner_outer:first-child {
+&#10;#oodpbbngko .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#boetvbydbw .gt_column_spanner_outer:last-child {
+&#10;#oodpbbngko .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#boetvbydbw .gt_column_spanner {
+&#10;#oodpbbngko .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -181,10 +181,10 @@ die_rolls <-
   display: inline-block;
   width: 100%;
 }
-&#10;#boetvbydbw .gt_spanner_row {
+&#10;#oodpbbngko .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#boetvbydbw .gt_group_heading {
+&#10;#oodpbbngko .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -209,7 +209,7 @@ die_rolls <-
   vertical-align: middle;
   text-align: left;
 }
-&#10;#boetvbydbw .gt_empty_group_heading {
+&#10;#oodpbbngko .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -223,13 +223,13 @@ die_rolls <-
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#boetvbydbw .gt_from_md > :first-child {
+&#10;#oodpbbngko .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#boetvbydbw .gt_from_md > :last-child {
+&#10;#oodpbbngko .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#boetvbydbw .gt_row {
+&#10;#oodpbbngko .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -247,7 +247,7 @@ die_rolls <-
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#boetvbydbw .gt_stub {
+&#10;#oodpbbngko .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -259,7 +259,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#boetvbydbw .gt_stub_row_group {
+&#10;#oodpbbngko .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -272,13 +272,13 @@ die_rolls <-
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#boetvbydbw .gt_row_group_first td {
+&#10;#oodpbbngko .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#boetvbydbw .gt_row_group_first th {
+&#10;#oodpbbngko .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#boetvbydbw .gt_summary_row {
+&#10;#oodpbbngko .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -287,14 +287,14 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#boetvbydbw .gt_first_summary_row {
+&#10;#oodpbbngko .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_first_summary_row.thick {
+&#10;#oodpbbngko .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#boetvbydbw .gt_last_summary_row {
+&#10;#oodpbbngko .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -303,7 +303,7 @@ die_rolls <-
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_grand_summary_row {
+&#10;#oodpbbngko .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -312,7 +312,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#boetvbydbw .gt_first_grand_summary_row {
+&#10;#oodpbbngko .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -321,7 +321,7 @@ die_rolls <-
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_last_grand_summary_row_top {
+&#10;#oodpbbngko .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -330,10 +330,10 @@ die_rolls <-
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_striped {
+&#10;#oodpbbngko .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#boetvbydbw .gt_table_body {
+&#10;#oodpbbngko .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -341,7 +341,7 @@ die_rolls <-
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_footnotes {
+&#10;#oodpbbngko .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -354,7 +354,7 @@ die_rolls <-
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_footnote {
+&#10;#oodpbbngko .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -362,7 +362,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#boetvbydbw .gt_sourcenotes {
+&#10;#oodpbbngko .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -375,64 +375,64 @@ die_rolls <-
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#boetvbydbw .gt_sourcenote {
+&#10;#oodpbbngko .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#boetvbydbw .gt_left {
+&#10;#oodpbbngko .gt_left {
   text-align: left;
 }
-&#10;#boetvbydbw .gt_center {
+&#10;#oodpbbngko .gt_center {
   text-align: center;
 }
-&#10;#boetvbydbw .gt_right {
+&#10;#oodpbbngko .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#boetvbydbw .gt_font_normal {
+&#10;#oodpbbngko .gt_font_normal {
   font-weight: normal;
 }
-&#10;#boetvbydbw .gt_font_bold {
+&#10;#oodpbbngko .gt_font_bold {
   font-weight: bold;
 }
-&#10;#boetvbydbw .gt_font_italic {
+&#10;#oodpbbngko .gt_font_italic {
   font-style: italic;
 }
-&#10;#boetvbydbw .gt_super {
+&#10;#oodpbbngko .gt_super {
   font-size: 65%;
 }
-&#10;#boetvbydbw .gt_footnote_marks {
+&#10;#oodpbbngko .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#boetvbydbw .gt_asterisk {
+&#10;#oodpbbngko .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#boetvbydbw .gt_indent_1 {
+&#10;#oodpbbngko .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#boetvbydbw .gt_indent_2 {
+&#10;#oodpbbngko .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#boetvbydbw .gt_indent_3 {
+&#10;#oodpbbngko .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#boetvbydbw .gt_indent_4 {
+&#10;#oodpbbngko .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#boetvbydbw .gt_indent_5 {
+&#10;#oodpbbngko .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#boetvbydbw .katex-display {
+&#10;#oodpbbngko .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#boetvbydbw div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#oodpbbngko div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -512,7 +512,7 @@ die_roll_draws |>
     ## # A tibble: 1 × 2
     ##    face `mean(theta > 1/6)`
     ##   <int>               <dbl>
-    ## 1     6               0.944
+    ## 1     6               0.950
 
 So 94.6% of the posterior mass of theta for face 6 sits above 1/6, the probability of a fair die we’d consider to be ‘fair’. Surely this is very firm evidence that theta (the face 6 marginal probabiltiy) is greater that 1/6, and thus the die is biased?
 
@@ -575,153 +575,86 @@ But if we had chosen face 6 beforehand, it would be a surprising result. It sits
 
 # Refining the Model
 
+In simulating the outcome, we’ve taken on a bit more of a frequentist rather than Bayesian approach, looking at data over the long term. That’s not a problem per se, but it was made easy by the fact that we’re dealing with a toy problem . But what if we can’t simulate? How can we change our model and use the data at hand to avoid the sharpshooter fallacy?
+
+The answer is to use . You’ll recall in the first model that I used a non-informative Dirichlet prior which claimed that all the ways the die could be biased were equally as likely, which was silly given I could see the die looked reasonable. I could have switches the prior to represent a fair die, but then the question is what parameters should I choose?
+
+With a hierarchical model,
+
+Here’s the model:
+
 ``` stan
 data {
   int<lower=1> n;
   array[n] int<lower=1, upper=6> roll;
 }
+
 parameters {
   real<lower=0> sigma;
   vector[6] eta;
 }
+
 transformed parameters {
   simplex[6] theta = softmax(eta);
 }
+
 model {
   sigma ~ normal(0, 0.5);
   eta   ~ normal(0, sigma);
+  
   roll  ~ categorical(theta);
 }
 ```
 
-``` r
-# Compile model
-die_roll_hierarchical_mdl <- cmdstan_model('dice_rolls_hierarchical.stan')
-    
+On the final line you’ll still see we’re still assuming our rolls are drawn from a categorical distribution with parameters **theta**. But **theta** isn’t a direct parameter. Instead it’s a simplex transformed using softmax from the parameter **eta**, which is an unbounded real vector that can be considered a ‘score’ for how biased a side is. If **eta** is all zeros, softmax transforms that into a simplex of 6 x 1/6 probabilities.
 
-die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
-        data = compose_data(
-        die_rolls
-    )
-)
-```
+Where we differ from our first model is that this **eta** score has a prior drawn from a normal distribution with mean zero. This is us telling we’re telling the model the scores are clustered around zero, so the die is probably fair. But the spread of these scores is a single parameter itself, shared amongst the six scores. It has its own prior, and gets its own posterior.
 
-    ## Running MCMC with 4 sequential chains...
-    ## 
-    ## Chain 1 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 1 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 1 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 1 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 1 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 1 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 1 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 1 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 1 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 1 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 1 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 1 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 1 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 1 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 1 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 1 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 1 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 1 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 1 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 1 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 1 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 1 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 1 finished in 0.2 seconds.
-    ## Chain 2 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 2 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 2 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 2 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 2 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 2 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 2 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 2 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 2 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 2 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 2 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 2 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 2 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 2 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 2 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 2 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 2 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 2 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 2 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 2 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 2 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 2 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 2 finished in 0.2 seconds.
-    ## Chain 3 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 3 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 3 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 3 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 3 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 3 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 3 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 3 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 3 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 3 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 3 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 3 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 3 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 3 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 3 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 3 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 3 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 3 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 3 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 3 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 3 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 3 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 3 finished in 0.2 seconds.
-    ## Chain 4 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 4 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 4 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 4 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 4 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 4 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 4 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 4 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 4 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 4 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 4 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 4 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 4 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 4 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 4 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 4 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 4 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 4 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 4 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 4 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 4 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 4 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 4 finished in 0.2 seconds.
-    ## 
-    ## All 4 chains finished successfully.
-    ## Mean chain execution time: 0.2 seconds.
-    ## Total execution time: 1.1 seconds.
-
-    ## Warning: 7 of 4000 (0.0%) transitions ended with a divergence.
-    ## See https://mc-stan.org/misc/warnings for details.
-
-    ## Warning: 1 of 4 chains had an E-BFMI less than 0.3.
-    ## See https://mc-stan.org/misc/warnings for details.
-
-``` r
-die_roll_hierarchical_draws <-
-die_roll_hierarchical_fit |>
-    spread_draws(theta[face], sigma)
-```
+How do we think about sigma?
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" alt="" width="672" />
 
+``` r
+die_roll_hierarchical_draws |>
+    ggplot() +
+    stat_dotsinterval(aes(x = sigma), .width = .90) +
+    labs(
+        title = 'Die Rolls - Hierarchical Model - Sigma Posterior Distribution',
+        subtitle = '90% Credible Interval',
+        x = 'Sigma',
+        y = 'Density'
+    )
+```
+
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" alt="" width="672" />
 
-# 
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" alt="" width="672" />
+
+# Testing a Loaded Die
+
+``` r
+shift = 0.050
+probs <- c(1/6 - shift, 1/6, 1/6, 1/6, 1/6, 1/6 + shift)
+
+loaded_die_rolls <- 
+    tibble(
+        roll_id = 1:1000,
+        roll = sample(1:6, 1000, replace = TRUE, prob = probs)
+    )
+loaded_die_rolls |>
+    ggplot() +
+    geom_bar(aes(roll), fill = 'lightgreen') +
+    labs(
+        title = "Distribution of One-Thousand Die Rolls",
+        x = "Die Face",
+        y = "Count of Rolls"
+    ) +
+    scale_x_continuous(breaks = 1:6)
+```
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" alt="" width="672" />
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" alt="" width="672" />
 
 [^1]: I’ve made public the two key conversations [here](https://claude.ai/share/d7479b46-d067-4e5a-8452-cdda2825a177) and [here](https://claude.ai/share/803b18f1-7b5f-4458-8089-fbc50c2b82fd)
 

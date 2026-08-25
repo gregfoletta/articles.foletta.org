@@ -198,26 +198,44 @@ But if we had chosen face 6 beforehand, it would be a surprising result. It sits
 
 # Refining the Model
 
+In simulating the outcome, we've taken on a bit more of a frequentist rather than Bayesian approach, looking at data over the long term. That's not a problem per se, but it was made easy by the fact that we're dealing with a toy problem . But what if we can't simulate? How can we change our model and use the data at hand to avoid the sharpshooter fallacy?
+
+The answer is to use . You'll recall in the first model that I used a non-informative Dirichlet prior which claimed that all the ways the die could be biased were equally as likely, which was silly given I could see the die looked reasonable. I could have switches the prior to represent a fair die, but then the question is what parameters should I choose?
+
+With a hierarchical model, 
+
+Here's the model:
+
 ```stan
 data {
   int<lower=1> n;
   array[n] int<lower=1, upper=6> roll;
 }
+
 parameters {
   real<lower=0> sigma;
   vector[6] eta;
 }
+
 transformed parameters {
   simplex[6] theta = softmax(eta);
 }
+
 model {
   sigma ~ normal(0, 0.5);
   eta   ~ normal(0, sigma);
+  
   roll  ~ categorical(theta);
 }
 ```
 
-```{r}
+On the final line you'll still see we're still assuming our rolls are drawn from a categorical distribution with parameters **theta**. But **theta** isn't a direct parameter. Instead it's a simplex transformed using softmax from the parameter **eta**, which is an unbounded real vector that can be considered a 'score' for how biased a side is. If **eta** is all zeros, softmax transforms that into a simplex of 6 x 1/6 probabilities.
+
+Where we differ from our first model is that this **eta** score has a prior drawn from a normal distribution with mean zero. This is us telling we're telling the model the scores are clustered around zero, so the die is probably fair. But the spread of these scores is a single parameter itself, shared amongst the six scores. It has its own prior, and gets its own posterior. 
+    
+How do we think about sigma?
+
+```{r include=FALSE}
 # Compile model
 die_roll_hierarchical_mdl <- cmdstan_model('dice_rolls_hierarchical.stan')
     
@@ -248,6 +266,19 @@ die_roll_hierarchical_draws |>
     )
 ```
 
+```{r}
+die_roll_hierarchical_draws |>
+    ggplot() +
+    stat_dotsinterval(aes(x = sigma), .width = .90) +
+    labs(
+        title = 'Die Rolls - Hierarchical Model - Sigma Posterior Distribution',
+        subtitle = '90% Credible Interval',
+        x = 'Sigma',
+        y = 'Density'
+    )
+```
+
+
 ```{r echo=FALSE}
 bind_rows(
     die_roll_draws |> filter(face == 6),
@@ -266,8 +297,58 @@ bind_rows(
         title = 'Die Rolls - Face 6 - Posterior Model Comparison',
         subtitle = '90% Credible Interval',
         x = 'Theta',
-        y = 'Die Face'
+        y = 'Model'
     )
 ```
 
-#
+# Testing a Loaded Die
+
+```{r}
+shift = 0.050
+probs <- c(1/6 - shift, 1/6, 1/6, 1/6, 1/6, 1/6 + shift)
+
+loaded_die_rolls <- 
+    tibble(
+        roll_id = 1:1000,
+        roll = sample(1:6, 1000, replace = TRUE, prob = probs)
+    )
+loaded_die_rolls |>
+    ggplot() +
+    geom_bar(aes(roll), fill = 'lightgreen') +
+    labs(
+        title = "Distribution of One-Thousand Die Rolls",
+        x = "Die Face",
+        y = "Count of Rolls"
+    ) +
+    scale_x_continuous(breaks = 1:6)
+```
+
+```{r include=FALSE}
+# Compile model
+loaded_die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
+        data = compose_data(
+        loaded_die_rolls
+    )
+)
+
+loaded_die_roll_hierarchical_draws <-
+loaded_die_roll_hierarchical_fit |>
+    spread_draws(theta[face], sigma)
+```
+
+
+```{r echo=FALSE}
+loaded_die_roll_hierarchical_draws |> 
+    ggplot() +
+    stat_dotsinterval(aes(x = theta, y = as_factor(face)), .width = .90) +
+    geom_vline(aes(xintercept = 1/6)) +
+    annotate(x = 1/6, y = .6, label = '1/6', geom = 'label') +
+    geom_vline(aes(xintercept = 1/6 - shift)) +
+    geom_vline(aes(xintercept = 1/6 + shift)) +
+    labs(
+        title = 'Die Rolls - Hierarchical Model - Posterior Distribution',
+        subtitle = '90% Credible Interval',
+        x = 'Theta',
+        y = 'Die Face'
+    )
+```

@@ -18,11 +18,13 @@ figcaption {
   color: #767676;
 }
 
-/* Lift images slightly off the page */
+/* Lift images slightly off the page.
+   Overrides the theme's `.image, figure img, img` rule in styles-light.css,
+   which sets `box-shadow: 0 3px 3px #bbbbbb`. Same specificity, loaded later. */
 
 article img {
   border-radius: 2px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.09);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 5px 14px rgba(0, 0, 0, 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,6 +34,6 @@ article img {
 
   /* Shadows read as much weaker against the dark background */
   article img {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 3px 10px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.55);
   }
 }
