@@ -4,14 +4,14 @@ data {
 }
 parameters {
   real<lower=0> sigma;
-  vector[6] eta;
+  vector[6] eta_raw;
 }
 transformed parameters {
+  vector[6] eta = sigma * eta_raw;
   simplex[6] theta = softmax(eta);
 }
 model {
-  sigma ~ normal(0, 0.5);
-  eta   ~ normal(0, sigma);
-  roll  ~ categorical(theta);
+  sigma   ~ normal(0, 0.5);
+  eta_raw ~ std_normal();
+  roll    ~ categorical(theta);
 }
-
