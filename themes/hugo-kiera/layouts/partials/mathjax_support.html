@@ -28,9 +28,35 @@ MathJax.Hub.Config({
 });
 </script> -->
 <script>
+// blogdown's .Rmarkdown output wraps math in backticks (`\(x\)`), which Goldmark
+// renders as <code>. MathJax ignores <code>, so unwrap math before typesetting.
+// Based on https://github.com/yihui/misc.js/blob/main/js/math-code.js
+function unwrapMathCode() {
+  var codes = document.getElementsByTagName('code');
+  for (var i = 0; i < codes.length;) {
+    var code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      var text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$(.|\s)+\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // live collection shrinks, don't increment
+        continue;
+      }
+    }
+    i++;
+  }
+}
+
 MathJax = {
   tex: {
     inlineMath: [['\\(', '\\)'], ['$', '$']]
+  },
+  startup: {
+    pageReady: function() {
+      unwrapMathCode();
+      return MathJax.startup.defaultPageReady();
+    }
   }
 };
 </script>
