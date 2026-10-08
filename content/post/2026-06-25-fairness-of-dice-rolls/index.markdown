@@ -1,19 +1,17 @@
 ---
-title: "Where's the Bias: Me, or the Die?"
+title: "Where's the Bias: In the Die, or in Me?"
 author: Greg Foletta
-date: '2026-07-19'
-slug: []
-categories: []
-tags: []
+date: '2026-09-30'
+categories: [R Stan Bayesian]
 ---
 
-One of the first posts I wrote on this blog was about simulating ‘Snakes and Ladders’. Simple games of chance like this are great to think about modelling as the scope is bounded. In recent times I’ve gotten a little ahead of myself, trying to model complicated things such as TCP connections, the classic run before walking scenario.
+It’s the classic mistake: trying to run before you can walk. And despite knowing my limitations when it comes to Bayesian modelling, I’ve still been making that mistake, trying to tackle problems that are outside of my capability. I needed something relatively simple and bounded, and while playing Yahtzee with my son I thought of a question that fit these parameters: how would I go about modelling the rolls of a die?
 
-The question that I asked myself while playing a game with my son the other day is “if this die were biased toward one face, could this I detect it? Could I put a number to my confidence?”. So one day I sat down and rolled the die one-thousand times. What I’ll take you through in this post is applying Bayesian models to and trying to determine if we can detect any bias and what our uncertainty is around this. Along the way I learn about my fallibility in interpreting probabiltiy and confidence intervals.
+At first I thought this would be almost too simple, but as we’ll discover there’s complexity hidden in these simple questions. In this post we’ll start with a simple model the die’s rolls. But in doing so we’ll identify a couple of human biases that lead us to the wrong conclusions, and work on a different model of a die roll that can help to overcome these biases.
 
 # LLM Disclosure
 
-All commentary and code in this post was written by myself. An LLM was used to help me generate the Stan models for each of the scenarios. Please consider this post in part an exercise in learning by explaining the models that the LLM created given problem statements. I’m certainly not a Stan expert who is able to craft these models off the top of my head.
+All commentary and code in this post was written by myself. An LLM was used to help me generate the Stan models for each of the scenarios, so please consider this post not as an expert lecturing to you ia innate knowledge, but rather as a student trying to understand and learn about these models by explaining how they work to someone else.
 
 As a result, a significant amount of LLM time was used asking questions, clarifying, and trying to educate myself on the model and other supporting statistical aspects. This is my preferred method of interacting with a model: treating it as a tutor, not as a servant.[^1].
 
@@ -24,7 +22,7 @@ As a result, a significant amount of LLM time was used asking questions, clarify
 <figcaption aria-hidden="true">The Die in Question</figcaption>
 </figure>
 
-Rolling a die one-thousand times didn’t take as long as I previously thought, only about 30 minutes. For what it’s worth, I swapped back and forth between my left and right hands to reduce the predictability my my rolls, and put a decent amount of momentum into each roll. It was actually quite meditiative[^2]. Here’s the first 10 rolls, which I show primarily because of the ominous run of five fives. This had me concerned about my rolling technique, so I swapped my rolling hand regularly, and tried to impart as much momentum as possible.
+The first step was to generate some data, which I acquired by rolling a die one-thousand times[^2]. This didn’t take as long as I thought it would - only about 30 minutes - it was actually quite a meditative process. Here’s a table showing the first 10 rolls:
 
 ``` r
 die_rolls <-
@@ -40,20 +38,20 @@ die_rolls <-
     slice_head(n = -1)
 ```
 
-<div id="jbdvpxqtfl" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#jbdvpxqtfl table {
+<div id="warhbmmgky" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#warhbmmgky table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#jbdvpxqtfl thead, #jbdvpxqtfl tbody, #jbdvpxqtfl tfoot, #jbdvpxqtfl tr, #jbdvpxqtfl td, #jbdvpxqtfl th {
+&#10;#warhbmmgky thead, #warhbmmgky tbody, #warhbmmgky tfoot, #warhbmmgky tr, #warhbmmgky td, #warhbmmgky th {
   border-style: none;
 }
-&#10;#jbdvpxqtfl p {
+&#10;#warhbmmgky p {
   margin: 0;
   padding: 0;
 }
-&#10;#jbdvpxqtfl .gt_table {
+&#10;#warhbmmgky .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -78,11 +76,11 @@ die_rolls <-
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_caption {
+&#10;#warhbmmgky .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#jbdvpxqtfl .gt_title {
+&#10;#warhbmmgky .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -93,7 +91,7 @@ die_rolls <-
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#jbdvpxqtfl .gt_subtitle {
+&#10;#warhbmmgky .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -104,7 +102,7 @@ die_rolls <-
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#jbdvpxqtfl .gt_heading {
+&#10;#warhbmmgky .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -115,12 +113,12 @@ die_rolls <-
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_bottom_border {
+&#10;#warhbmmgky .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_col_headings {
+&#10;#warhbmmgky .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -134,7 +132,7 @@ die_rolls <-
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_col_heading {
+&#10;#warhbmmgky .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -153,7 +151,7 @@ die_rolls <-
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#jbdvpxqtfl .gt_column_spanner_outer {
+&#10;#warhbmmgky .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -164,13 +162,13 @@ die_rolls <-
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#jbdvpxqtfl .gt_column_spanner_outer:first-child {
+&#10;#warhbmmgky .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#jbdvpxqtfl .gt_column_spanner_outer:last-child {
+&#10;#warhbmmgky .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#jbdvpxqtfl .gt_column_spanner {
+&#10;#warhbmmgky .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -181,10 +179,10 @@ die_rolls <-
   display: inline-block;
   width: 100%;
 }
-&#10;#jbdvpxqtfl .gt_spanner_row {
+&#10;#warhbmmgky .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#jbdvpxqtfl .gt_group_heading {
+&#10;#warhbmmgky .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -209,7 +207,7 @@ die_rolls <-
   vertical-align: middle;
   text-align: left;
 }
-&#10;#jbdvpxqtfl .gt_empty_group_heading {
+&#10;#warhbmmgky .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -223,13 +221,13 @@ die_rolls <-
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#jbdvpxqtfl .gt_from_md > :first-child {
+&#10;#warhbmmgky .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#jbdvpxqtfl .gt_from_md > :last-child {
+&#10;#warhbmmgky .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#jbdvpxqtfl .gt_row {
+&#10;#warhbmmgky .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -247,7 +245,7 @@ die_rolls <-
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#jbdvpxqtfl .gt_stub {
+&#10;#warhbmmgky .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -259,7 +257,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#jbdvpxqtfl .gt_stub_row_group {
+&#10;#warhbmmgky .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -272,13 +270,13 @@ die_rolls <-
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#jbdvpxqtfl .gt_row_group_first td {
+&#10;#warhbmmgky .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#jbdvpxqtfl .gt_row_group_first th {
+&#10;#warhbmmgky .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#jbdvpxqtfl .gt_summary_row {
+&#10;#warhbmmgky .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -287,14 +285,14 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#jbdvpxqtfl .gt_first_summary_row {
+&#10;#warhbmmgky .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_first_summary_row.thick {
+&#10;#warhbmmgky .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#jbdvpxqtfl .gt_last_summary_row {
+&#10;#warhbmmgky .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -303,7 +301,7 @@ die_rolls <-
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_grand_summary_row {
+&#10;#warhbmmgky .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -312,7 +310,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#jbdvpxqtfl .gt_first_grand_summary_row {
+&#10;#warhbmmgky .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -321,7 +319,7 @@ die_rolls <-
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_last_grand_summary_row_top {
+&#10;#warhbmmgky .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -330,10 +328,10 @@ die_rolls <-
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_striped {
+&#10;#warhbmmgky .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#jbdvpxqtfl .gt_table_body {
+&#10;#warhbmmgky .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -341,7 +339,7 @@ die_rolls <-
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_footnotes {
+&#10;#warhbmmgky .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -354,7 +352,7 @@ die_rolls <-
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_footnote {
+&#10;#warhbmmgky .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -362,7 +360,7 @@ die_rolls <-
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#jbdvpxqtfl .gt_sourcenotes {
+&#10;#warhbmmgky .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -375,64 +373,64 @@ die_rolls <-
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#jbdvpxqtfl .gt_sourcenote {
+&#10;#warhbmmgky .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#jbdvpxqtfl .gt_left {
+&#10;#warhbmmgky .gt_left {
   text-align: left;
 }
-&#10;#jbdvpxqtfl .gt_center {
+&#10;#warhbmmgky .gt_center {
   text-align: center;
 }
-&#10;#jbdvpxqtfl .gt_right {
+&#10;#warhbmmgky .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#jbdvpxqtfl .gt_font_normal {
+&#10;#warhbmmgky .gt_font_normal {
   font-weight: normal;
 }
-&#10;#jbdvpxqtfl .gt_font_bold {
+&#10;#warhbmmgky .gt_font_bold {
   font-weight: bold;
 }
-&#10;#jbdvpxqtfl .gt_font_italic {
+&#10;#warhbmmgky .gt_font_italic {
   font-style: italic;
 }
-&#10;#jbdvpxqtfl .gt_super {
+&#10;#warhbmmgky .gt_super {
   font-size: 65%;
 }
-&#10;#jbdvpxqtfl .gt_footnote_marks {
+&#10;#warhbmmgky .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#jbdvpxqtfl .gt_asterisk {
+&#10;#warhbmmgky .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#jbdvpxqtfl .gt_indent_1 {
+&#10;#warhbmmgky .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#jbdvpxqtfl .gt_indent_2 {
+&#10;#warhbmmgky .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#jbdvpxqtfl .gt_indent_3 {
+&#10;#warhbmmgky .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#jbdvpxqtfl .gt_indent_4 {
+&#10;#warhbmmgky .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#jbdvpxqtfl .gt_indent_5 {
+&#10;#warhbmmgky .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#jbdvpxqtfl .katex-display {
+&#10;#warhbmmgky .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#jbdvpxqtfl div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#warhbmmgky div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -469,14 +467,16 @@ die_rolls <-
   &#10;</table>
 </div>
 
-After one thousand rolls, here’s the distribution of dice rolls:
+I show this primarily because of the ominous run of five fives (a probability of 1:7776), which had me concerned about my rolling technique. I then began swapping between my right and left hands every 100 rolls, and ensuring I put a fair amount of momentum into rolling the die.[^3]
+
+After rolling, here’s the distribution of the number of rolls per face of the die:
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-4-1.png" alt="" width="672" />
-With apologies to Alexander Pope, “to pattern match is to be human”. I’m immediately drawn to the six face that’s peeking its head above all the others. Is this indicative of a biased die? How certain can we be?
+With apologies to Alexander Pope, “to pattern match is to be human”. What I’m drawn to is face six, and the fact that it’s peeking its head above all the others. Could this be an indication that the die has a bias in it? A spoiler alert: it’s not, and keen observers who understand the physical properties of a die will quickly see why it’s not. But there’s something about face six that still tickles something in my brain and leaves me wanting to understand more.
 
 # A Trip to Monte Carlo
 
-The next step is to use Bayesian inference to help us model the potential bias of the die. Here’s the first model we’ll try, written in Stan:
+My original question was simply about modelling the die rolls, but now I’d seen the data I also wanted to determine the uncertainty of
 
 ``` stan
 data {
@@ -502,24 +502,33 @@ We’re using a non-informative **dirichlet** prior on theta, with all of the *a
 After compiling the Stan program, we feed it the data and sample from the posterior distributions of each of the **theta** parameters. Here’s a dotplot visualisation of these posterior draws, with a 90% credible interval and a vertical line at 1/6 (the probability of a side of a fair die).
 
 <img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" alt="" width="672" />
-How much of the posterior mass of fave 6 is sitting above 1/6?
+Our posterior distribution for `\(\theta_6\)` is shifted to the right as compared to what we consider a fair die’s `\(theta\)` to be, which is `\(1/6\)`. The above graph shows a 90% credible interval, and again almost all of that is above the `\(1/6\)` as well.
+
+How much of the mass is above 1/6?
+
+``` r
+posterior_mass <-
+    die_roll_draws |>
+    filter(face == 6) |>
+    summarise(mean(theta > 1/6))
+
+posterior_mass
+```
 
     ## # A tibble: 1 × 2
     ##    face `mean(theta > 1/6)`
     ##   <int>               <dbl>
-    ## 1     6               0.937
+    ## 1     6               0.944
 
-So 93.72% of the posterior mass of theta for face 6 sits above 1/6, the probability of a fair die we’d consider to be ‘fair’. Surely this is very firm evidence that theta (the face 6 marginal probabiltiy) is greater that 1/6, and thus the die is biased?
+Around 95. Surely that means that there is a 95% probability that the real value of `\(\theta_6\)` is greater that 1/6, and thus the die is biased?
+
+Well, not quite. I’ve made two mistakes here which end up being really valuable lessons, which ultimately lead to better insights and understanding. The first problem is that I’ve been caught out by the *Texan Sharpshooter Fallacy*. The second is that in an effort to be ‘objective’, I’ve chosen a really poor prior. Let’s dive a bit deeper into these.
 
 # Enter the Texan Sharpshooter
 
-This is why I - a statistical dabbler - am very nervous asserting anything about probability in public. Around every corner seems to be a wrong assumption or human foible that catches me out. In this instance, I’ve been shot by a [Texan Sharpshooter](https://en.wikipedia.org/wiki/Texas_sharpshooter_fallacy).
+This is why I - a statistical dabbler - am very nervous asserting anything about probability in public. Around every corner seems to be a wrong assumption or human foible that catches me out. In this instance, I’ve been shot by a [Texan Sharpshooter](https://en.wikipedia.org/wiki/Texas_sharpshooter_fallacy). Just like the sharpshooter drawing the target around the bullet holes after they’ve shot, I’ve chosen the die face with the largest count and have immediately seen bias where there is simply random variability.
 
-If I had said “I think the six is biased”, then then I had seen these posterior distributions, then my previous assertion would have been correct. But I choose the six after I’d seen the data, not before. I drew the bullseye around face 6 after I’d ‘shot’. This si
-
-To get a better intuiution about this fallacy, we can move to a simulation. We simulate 100,000 instances of my 1,000 rolls:
-
-We use `rmultinom()` to generate 100,000 simulations of 1,000 dice rolls. These come out in matrix format, so we do a bit of wrangling to turn it into a tibble:
+To get a better intuition about this fallacy we can perform a simulation. In the code below we use `rmultinom()` to generate 100,000 simulations of 1,000 dice rolls. These come out in matrix format, so we do a bit of wrangling to turn it into a tibble:
 
 ``` r
 simulations <- 100000
@@ -529,10 +538,10 @@ die_roll_sims <-
     rmultinom(simulations, rolls, rep(1/6, 6)) |>
     as_tibble(.name_repair = 'unique_quiet') |> 
     mutate(face = 1:n()) |>
-    pivot_longer(cols = starts_with('..'), names_to = 'sim', names_pattern = '..(\\d+)', values_to = 'count') 
+    pivot_longer(cols = starts_with('..'), names_to = 'sim', names_pattern = '..(\\d+)', values_to = 'count')
 ```
 
-For each of those 100,000 simulations we, we take consider the two scenarios and return the count of rolls out one-thousand for each:
+This data is slightly different to my original, manually rolled data; for each simulation we get a count of how many times each face was rolled. Now for each of those 100,000 simulations we, take consider two scenarios
 
 1.  Imitate the fallacy: pick the face that had the maximum number of rolls out of the thousand.
 2.  Chose a face beforehand (I’ve selected face 6).
@@ -552,23 +561,24 @@ die_roll_sim_summary_choices <-
 
 Now we can visualise the distribution of counts for each of the scenarios, overlaying the counts for each of the die faces from or original data:
 
-    ## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
-    ## ℹ Please use `linewidth` instead.
-    ## This warning is displayed once per session.
-    ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
-
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" alt="" width="672" />
-Now we can see the sharpshooter fallacy come to life. Looking at the count of face six from our original data, we can see it sits near the centre of the distribution of counts when chose the maximum face after we’ve rolled. It’s not that remarkable or surprising that our face six had as many rolls as it did.
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-10-1.png" alt="" width="672" />
+Now we get a better view of differences in distributions of count. Looking at the count of face six from our original data, we can see it sits near the centre of the distribution of counts when chose the maximum face after we’ve rolled. It’s not that remarkable or surprising that our face six had as many rolls as it did.
 
 But if we look at where the counts sit in the distribution when the face was chosen beforehand, we see it sits quite fair right in the distribution. It would have been remarkable and indicative that the die was biased.
 
+# The Burden of Choosing a Prior
+
+The second problem is with the model itself, and I briefly mentioned it before. I chose a `\(Dirichlet(1,1,1,1,1)\)` as the prior, which means that it is my belief that all combinations of `\(\theta_{1..6}\)` are equally likely.[^4]. This is not a reasonable prior as I mentioned before: I could see and feel the die and it looked fair. It certainly wasn’t going to roll all sixes.
+
+What this relates to is my reluctance, or even fear, of choosing a prior. There’s a feeling that introducing a choice that I made somehow makes the model “less objective”, so I end up going for a very uninformative prior. As we’ve seen above this can have the effect of making the model worse, not better.
+
+If you’re going use a more informative prior, there’s the burden of choosing which one? Part of the problem is that in these blog posts I’m not performing proper diagnostic checks of the model, one of which is prior predictive simulations. This would help narrow down what a reasonable prior would look like.
+
+But even then, there’s still a wide range of values we could use as a prior. How can we get better at this?
+
 # Refining the Model
 
-In simulating the outcome, we’ve taken on a bit more of a frequentist rather than Bayesian approach, looking at data over the long term. That’s not a problem per se, but it was made easy by the fact that we’re dealing with a toy problem . But what if we can’t simulate? How can we change our model and use the data at hand to avoid the sharpshooter fallacy?
-
-The answer is to use You’ll recall in the first model that I used a non-informative Dirichlet prior which claimed that all the ways the die could be biased were equally as likely, which was silly given I could see the die looked reasonable. I could have switches the prior to represent a fair die, but then the question is what parameters should I choose?
-
-Here’s the model:
+The answer is to use a hierarchical model, and have the data help inform the prior. Here’s the new model we’ll try out on our die roll data:
 
 ``` stan
 data {
@@ -590,154 +600,30 @@ model {
 }
 ```
 
-The model still takes the same data `\(roll\)` of length `\(n\)`, but now we have two parameters: `\(sigma\)` and `\(eta_raw\)`. The `\(eta_raw\)` is a vector of six, one per face of the die, living on the real number line. You can consider its units to be how many standard deviations above or below average the face is. The `\(sigma\)` parameter is a single number describing how “spread out” (in log-odds) the faces of the die are.
+The model still takes the same data `\(roll\)` of length `\(n\)`, but our parameters have slightly changed. Our `\(theta\)` probabilities in our Categorical are not a direct parameter, but rather a transformed parameter. It’s derived from `\(eta\)`, which lives on the real number line and is transformed into probabilities via softmax().
 
-In the transformed parameter section, the `\(eta\)` parameter is `\(sigma\)` multiplied by each `\(eta_raw\)`, giving us the real per-face log-odds effects. This is then run through `\(softmax()\)` to give us a vector of six probabilities.
+Up until here there aren’t any substantial differences between the this and the first model, just a different path to get there. The difference in this model is that it’s hierarchical: we don’t fox the prior on `\(eta\)`, but rather assume `\(eta\)` is drawn from a `\(Normal(0, sigma)\)`, where `\(sigma\)` - what we could call the ‘lopsidedness’ of the die - is inferred from the data. There’s a slight detour via `\(eta_raw\)` to avoid [Neal’s Funnel](https://mc-stan.org/docs/2_18/stan-users-guide/reparameterization-section.html), but `\(eta = sigma * eta_raw\)` is equivalent to a prior on `\(eta\)` of `\(Normal(0, sigma)\)`.
 
-Finally in the model, our prior on `\(sigma\)` tells the model that we expect the die to be fair (mean of 0), but the .5 allows **TODO**. The `\(eta_raw\)` prior is the standard normal, which combined with the *transformed paramters* effectively means that `\(eta ~ normal(0, sigma)\)`. Finally, our `\(theta\)` is the likelihood of the probabilities given our roll data.
+So what we now is a model that can infer the overall lopsidedness of the die (using `\(sigma\)`) and then adaptively regularise `\(theta\)` based on this. We can’t avoid a prior completely, needing one on `\(sigma\)`, but this prior is now informing the belief of the overall bias of the die, not each specific face of the die. The units of `\(sigma\)` are in log-ratios, which is difficult to comprehend, but effectively our prior of `\(HalfNormal(0, 0.5)\)` ultimately expects the die to have a substantial bias.
 
-We compile the model and sample from the joint distribution:
-
-``` r
-# Compile model
-die_roll_hierarchical_mdl <- cmdstan_model('dice_rolls_hierarchical.stan')
-    
-
-die_roll_hierarchical_fit <- die_roll_hierarchical_mdl$sample(
-        data = compose_data(
-        die_rolls
-    )
-)
-```
-
-    ## Running MCMC with 4 sequential chains...
-    ## 
-    ## Chain 1 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 1 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 1 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 1 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 1 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 1 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 1 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 1 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 1 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 1 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 1 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 1 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 1 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 1 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 1 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 1 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 1 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 1 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 1 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 1 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 1 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 1 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 1 finished in 0.1 seconds.
-    ## Chain 2 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 2 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 2 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 2 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 2 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 2 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 2 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 2 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 2 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 2 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 2 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 2 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 2 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 2 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 2 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 2 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 2 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 2 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 2 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 2 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 2 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 2 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 2 finished in 0.1 seconds.
-    ## Chain 3 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 3 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 3 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 3 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 3 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 3 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 3 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 3 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 3 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 3 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 3 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 3 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 3 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 3 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 3 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 3 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 3 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 3 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 3 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 3 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 3 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 3 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 3 finished in 0.1 seconds.
-    ## Chain 4 Iteration:    1 / 2000 [  0%]  (Warmup) 
-    ## Chain 4 Iteration:  100 / 2000 [  5%]  (Warmup) 
-    ## Chain 4 Iteration:  200 / 2000 [ 10%]  (Warmup) 
-    ## Chain 4 Iteration:  300 / 2000 [ 15%]  (Warmup) 
-    ## Chain 4 Iteration:  400 / 2000 [ 20%]  (Warmup) 
-    ## Chain 4 Iteration:  500 / 2000 [ 25%]  (Warmup) 
-    ## Chain 4 Iteration:  600 / 2000 [ 30%]  (Warmup) 
-    ## Chain 4 Iteration:  700 / 2000 [ 35%]  (Warmup) 
-    ## Chain 4 Iteration:  800 / 2000 [ 40%]  (Warmup) 
-    ## Chain 4 Iteration:  900 / 2000 [ 45%]  (Warmup) 
-    ## Chain 4 Iteration: 1000 / 2000 [ 50%]  (Warmup) 
-    ## Chain 4 Iteration: 1001 / 2000 [ 50%]  (Sampling) 
-    ## Chain 4 Iteration: 1100 / 2000 [ 55%]  (Sampling) 
-    ## Chain 4 Iteration: 1200 / 2000 [ 60%]  (Sampling) 
-    ## Chain 4 Iteration: 1300 / 2000 [ 65%]  (Sampling) 
-    ## Chain 4 Iteration: 1400 / 2000 [ 70%]  (Sampling) 
-    ## Chain 4 Iteration: 1500 / 2000 [ 75%]  (Sampling) 
-    ## Chain 4 Iteration: 1600 / 2000 [ 80%]  (Sampling) 
-    ## Chain 4 Iteration: 1700 / 2000 [ 85%]  (Sampling) 
-    ## Chain 4 Iteration: 1800 / 2000 [ 90%]  (Sampling) 
-    ## Chain 4 Iteration: 1900 / 2000 [ 95%]  (Sampling) 
-    ## Chain 4 Iteration: 2000 / 2000 [100%]  (Sampling) 
-    ## Chain 4 finished in 0.1 seconds.
-    ## 
-    ## All 4 chains finished successfully.
-    ## Mean chain execution time: 0.1 seconds.
-    ## Total execution time: 0.5 seconds.
-
-    ## Warning: 1 of 4000 (0.0%) transitions ended with a divergence.
-    ## See https://mc-stan.org/misc/warnings for details.
-
-``` r
-die_roll_hierarchical_draws <-
-die_roll_hierarchical_fit |>
-    spread_draws(theta[face], sigma)
-```
+We now run the model with the original data:
 
 Let’s take a look at the posterior distributions for the `\(theta\)` parameter:
 
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" alt="" width="672" />
-We can see that the posterior distribution for face six has been pulled back, or ‘regularised’ towards 1/6. Why? Because the model has found that when lookingat the joint postioror probaility most of the mass of *sigma* is near zero. Recall that sigma is how ‘spread out’ *raw_eta* is.
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" alt="" width="672" />
+The posterior distributions for the die faces have been regularised back towards the fair value of 1/6. Why? Let’s look at the posterior distribution of `\(sigma\)`:
 
-``` r
-die_roll_hierarchical_draws |>
-    ggplot() +
-    geom_histogram(aes(sigma), binwidth = .005, fill = 'lightgreen')
-```
-
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" alt="" width="672" />
-given the prior and data, sigma, .back towards , whilst it still has a longer tail that the others, the majority of face six’s posterior mass has been pulled shifted back towards 1/6.
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" alt="" width="672" />
+The model has determined that when looking at the joint distribution of our pamaters that this is the posterior distribution of `\(sigma\)`. Most of the mass is concentrated near zero, meaning the model believes that the per-face `\(eta\)` scores do not vary far from zero. This indicates that the die is likely fair.
 
 To get a better look at the contrast, let’s render only face six’s posterior distributions from our first model, and the hierarchical model:
 
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" alt="" width="672" />
-\# Testing a Loaded Die
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" alt="" width="672" />
+This more clearly shows the work the hierarchical model is doing to regularise face six back towards a fair die.
 
-The next obvious step is to see how this model performs when we give it data from a die that is actually biased? I don’t have a weighted die at hand, so I turn to a simulation. I’ve shifted the probability of rolling a six up by 0.05, and also reduced the opposing face (face one) by the same amount
+# Testing a Loaded Die
+
+The obvious next step is to see how this hierachical model performs when we give it data from a die that is actually biased I don’t have a weighted die at hand, so I turn to a simulation. A loaded die would shift the centre of mass within the die towards one of the faces, incerasing its probabality, but then decreasing the probability of the opposing face. In the simulation below I’ve shifted the probability of rolling a six up by 0.05 and then reduced face one by the same amount.
 
 ``` r
 set.seed(3455357)
@@ -751,7 +637,7 @@ loaded_die_rolls <-
     )
 ```
 
-Here’s the distribution of dice rolls for the simulation:
+Here’s the distribution of dice rolls for the simulated loaded die:
 
 ``` r
 loaded_die_rolls |>
@@ -766,11 +652,13 @@ loaded_die_rolls |>
     scale_x_continuous(breaks = 1:6)
 ```
 
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" alt="" width="672" />
-Now we take that data and run it through the same regularising model and take draws to get a view of the posterior for each face’s theta:
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" alt="" width="672" />
+Let’s run this data through the same hierarchical model:
 
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" alt="" width="672" />
-We see that the posteriors are not regularised at all, with faces one and six’s distributions sitting out to the left and right respectively, and the 90% credible intervals overlapping with the actual theta values that were shifted down and up from the fair 1/6. Remember: this is the same model, only the data has changed. Yet the model itself has been able to help us avoid the Sharpshooter Problem by pulling posterior likelihoods of a fair die back towards fair thetas, and conversely leaving in place posterior likelyhoods of a known biased die.
+Here are the posterior distributions of each of the faces of the loaded die:
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" alt="" width="672" />
+The posteriors are not regularised at all, with faces one and six’s distributions sitting out to the left and right respectively. You’ll also notice that the 90% credible intervals does not overlap a fair value of 1/6. Remember: this is the same model, only the data has changed. Stil the model has been able to help us avoid the Sharpshooter Problem by pulling posterior likelihoods of a fair die back towards fair thetas, and conversely leaving in place posterior likelyhoods of a known biased die.
 
 For clarity, here’s a view of theta\[6\] and sigma for both my manual die rolls, and the simulated biased die:
 
@@ -806,14 +694,17 @@ die_roll_draws_unified |>
     )
 ```
 
-<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" alt="" width="672" />
-
-This more clearly shows how the posterior distribution of the biased simulation has been pulled to the right.
+<img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" alt="" width="672" />
+Note the `\(sigma\)` distribution for the biased die, with a 90% interval roughly sitting between .1 and .4, as opposed to the real, likely unbiased die where the mass is pushed closer to zero.
 
 # Summary
 
-So where have we ended up? We started off with the simple task of rolling a die one-thousand times and using a Stan model to model these rolls. We then saw how human intuition can lead us to the wrong results, and created a simulation to show this. Finally, we used a regularising model that better takes into account potential bias in the die, and hekping to avoid the human bias that can come into play.
+That was an interesting journey, so time for a recap. We started off with the simple task of rolling a die one-thousand times and using a Stan model to model these rolls. We then saw how human intuition can lead us to the wrong results, and created a simulation to show this. Finally, we used a hierarchical model that took the data and determined the plausibility of a biased die, then adaptively regularising the per-face posterior distributions.
 
 [^1]: I’ve made public the two key conversations [here](https://claude.ai/share/d7479b46-d067-4e5a-8452-cdda2825a177) and [here](https://claude.ai/share/803b18f1-7b5f-4458-8089-fbc50c2b82fd)
 
-[^2]: You can view the raw data [here](dice_rolls.txt)
+[^2]: You can view the raw data [here](die_rolls.txt)
+
+[^3]: Whether or not these factors had an effect on the die is a complete post in and of itself.
+
+[^4]: Dirchlet is conjugate to our Categorical, so each `\(\alpha\)` in the prior works as a pseudo-count added to our actual roll data

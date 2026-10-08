@@ -1,7 +1,7 @@
 data {
   int<lower=1> n;
   array[n] int<lower=1, upper=6> roll;
-  real alpha; 
+  vector[6] alphas; 
 }
 
 parameters {
@@ -9,6 +9,6 @@ parameters {
 }
 
 model {
-  theta ~ dirichlet(rep_vector(alpha, 6));
+  theta ~ dirichlet(alphas);
   roll  ~ categorical(theta);
 }
